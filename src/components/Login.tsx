@@ -13,7 +13,7 @@ type FieldType = {
 
 const Login: React.FC = () => {
   const router = useRouter();
-  const { login, user } = useAuth({ middleware: 'guest', redirectIfAuthenticated: '/' });
+  const { login, user } = useAuth({ middleware: 'guest', redirectIfAuthenticated: '/dashboard' });
   const [errors, setErrors] = useState([]);
   const [status, setStatus] = useState('');
   const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
