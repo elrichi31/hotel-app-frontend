@@ -12,7 +12,7 @@ type LayoutProps = {
 
 const Layout = ({ children }: LayoutProps) => {
     const [user, setUser] = useState(null);
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -56,10 +56,9 @@ const Layout = ({ children }: LayoutProps) => {
     };
 
 
-    if (!session?.user) {
+    if (status === "loading") {
         return <Loading />;
     }
-
     return (
         <div>
             <SessionAuthProvider>
