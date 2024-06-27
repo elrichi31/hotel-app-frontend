@@ -23,7 +23,7 @@ type MenuItem = Required<MenuProps>['items'][number];
 const nav: MenuItem[] = [
   { key: '/dashboard', icon: <PieChartOutlined />, label: (<a href='/dashboard'>Dashboard</a>) },
   { key: '/registerclient', icon: <DesktopOutlined />, label: (<a href='/registerclient'>Register</a>) },
-  { key: '3', icon: <ContainerOutlined />, label: 'Option 3' },
+  { key: '/rooms', icon: <ContainerOutlined />, label: (<a href='/rooms'>Habitaciones</a>)  },
   {
     key: 'sub1',
     label: 'Navigation One',
