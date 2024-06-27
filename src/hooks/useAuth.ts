@@ -1,4 +1,3 @@
-import useSWR from 'swr';
 import axios from '../lib/axios';
 import { useEffect, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,6 +6,7 @@ import { message } from 'antd';
 
 export const useAuth = ({ middleware, redirectIfAuthenticated }: any = {}) => {
     const router = useRouter();
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Configurar axios para incluir el token en todas las solicitudes
@@ -18,92 +18,81 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: any = {}) => {
         return config;
     });
 
-    const fetcher = (url: string) => axios.get(url).then(res => res.data);
-    const { data: user, error, mutate } = useSWR('/api/user', fetcher, {
-        // shouldRetryOnError: false,
-        // revalidateOnFocus: false,
-        // dedupingInterval: 5000, // Evita solicitudes duplicadas en un intervalo de 60 segundos
-        onSuccess: () => setLoading(false),
-        onError: () => {
+    const handleLogin = async ({ setErrors, ...props }: any) => {
+        setErrors([]);
+
+        try {
+            const response = await axios.post('/login', props);
+            Cookies.set('token', response.data.token.token, { expires: 7 }); // Configura la cookie para que expire en 7 días
             setLoading(false);
-            if (error && error.response && error.response.status === 401) {
-                Cookies.remove('token');
-                router.push('/login');
-            }
-        },
-    });
-
-    const register = async ({ setErrors, ...props }: any) => {
-        setErrors([]);
-
-        return axios
-            .post('/register', props)
-            .then(() => mutate())
-            .catch(error => {
-                if (error.response.status !== 422) throw error;
-                setErrors(error.response.data.errors);
-            });
+            router.push('/dashboard');
+        } catch (error: any) {
+            if (error.response.status !== 422) throw error;
+            setErrors(error.response.data.errors);
+            setLoading(false);
+        }
     };
 
-    const login = async ({ setErrors, ...props }: any) => {
-        setErrors([]);
-
-        return axios
-            .post('/login', props)
-            .then(response => {
-                Cookies.set('token', response.data.token.token, { expires: 7 }); // Configura la cookie para que expire en 7 días
-                setLoading(false);
-                mutate().then(() => {
-                    router.push('/dashboard');
-                });
-            })
-            .catch(error => {
-                if (error.response.status !== 422) throw error;
-                setErrors(error.response.data.errors);
-                setLoading(false);
-            });
-    };
-
-    const logout = async () => {
-        await axios.post('/logout').then(() => {
+    const handleLogout = async () => {
+        try {
+            await axios.post('/logout');
             Cookies.remove('token');
+            setUser(null); // Limpia el estado del usuario
             setLoading(false);
-            mutate(null, false);
             router.push('/login');
-        }).catch((err) => {
+        } catch (err) {
             message.error('Error logging out');
             Cookies.remove('token');
+            setUser(null); // Limpia el estado del usuario
             setLoading(false);
-            mutate(null, false);
             router.push('/login');
-        });
+        }
     };
 
-    const handleRevalidation = useCallback(() => {
+    const handleRevalidation = useCallback(async () => {
         const token = Cookies.get('token');
         if (token) {
-            mutate();
+            try {
+                const response = await axios.get('/api/user');
+                setUser(response.data); // Actualiza el estado del usuario
+                setLoading(false);
+            } catch (error: any) {
+                if (error.response && error.response.status === 401) {
+                    Cookies.remove('token');
+                    setUser(null);
+                    router.push('/login');
+                } else {
+                    setLoading(false);
+                }
+            }
         } else {
+            setUser(null);
             setLoading(false);
         }
-    }, [mutate]);
+    }, [router]);
 
     useEffect(() => {
-        handleRevalidation();
-        if (middleware === 'guest' && redirectIfAuthenticated && user) {
-            router.push(redirectIfAuthenticated);
-        }
-        if (middleware === 'auth' && error) {
-            message.error('You must be logged in to access this page');
-            router.push('/login');
-        }
-    }, [user, error, handleRevalidation]);
+        const fetchData = async () => {
+            await handleRevalidation();
+            console.log()
+
+            if (middleware === 'guest' && redirectIfAuthenticated && user) {
+                router.push(redirectIfAuthenticated);
+            }
+
+            if (middleware === 'auth' && !user) {
+                message.error('You must be logged in to access this page');
+                router.push('/login');
+            }
+        };
+
+        fetchData();
+    }, [handleRevalidation, middleware, redirectIfAuthenticated, router, user]);
 
     return {
         user,
-        register,
-        login,
-        logout,
+        login: handleLogin,
+        logout: handleLogout,
         loading,
     };
 };

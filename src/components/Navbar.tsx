@@ -1,5 +1,5 @@
 "use client";
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import {
   AppstoreOutlined,
   ContainerOutlined,
@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Button, Menu, Avatar, Layout, Drawer, Space, Dropdown } from 'antd';
-import { useAuth } from '../hooks/useAuth';
+import { useRouter } from 'next/navigation';
 import { useMediaQuery } from 'react-responsive';
 
 const { Sider, Content, Header } = Layout;
@@ -21,8 +21,8 @@ const { Sider, Content, Header } = Layout;
 type MenuItem = Required<MenuProps>['items'][number];
 
 const nav: MenuItem[] = [
-  { key: '1', icon: <PieChartOutlined />, label: 'Option 1' },
-  { key: '2', icon: <DesktopOutlined />, label: 'Option 2' },
+  { key: '/dashboard', icon: <PieChartOutlined />, label: (<a href='/dashboard'>Dashboard</a>) },
+  { key: '/registerclient', icon: <DesktopOutlined />, label: (<a href='/registerclient'>Register</a>) },
   { key: '3', icon: <ContainerOutlined />, label: 'Option 3' },
   {
     key: 'sub1',
@@ -54,9 +54,16 @@ const nav: MenuItem[] = [
   },
 ];
 
-const App = ({children, user, logout}: any) => {
+const App = ({ children, user, logout }: any) => {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string>('');
+  const router = useRouter();
+
+  useEffect(() => {
+    setSelectedKey(window.location.pathname); // Establece la clave seleccionada en función de la ruta actual
+  }, [router]);
+
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
   };
@@ -77,7 +84,7 @@ const App = ({children, user, logout}: any) => {
       onClick: () => console.log('Profile'),
     },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', onClick: logout },
-  ]
+  ];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -89,7 +96,7 @@ const App = ({children, user, logout}: any) => {
             </Button>
             {user && (
               <Space style={{ float: 'right', marginRight: 16 }}>
-                <Dropdown menu={{items}} trigger={['click']}>
+                <Dropdown menu={{ items }} trigger={['click']}>
                   <Avatar size={30} icon={<UserOutlined />} style={{ cursor: 'pointer' }} />
                 </Dropdown>
               </Space>
@@ -103,7 +110,7 @@ const App = ({children, user, logout}: any) => {
             style={{ padding: 0 }}
           >
             <Menu
-              defaultSelectedKeys={['1']}
+              selectedKeys={[selectedKey]}
               defaultOpenKeys={['sub1']}
               mode="inline"
               items={nav}
@@ -112,22 +119,36 @@ const App = ({children, user, logout}: any) => {
           </Drawer>
         </>
       ) : (
-        <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="light">
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          theme="light"
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            height: '100vh',
+            overflow: 'auto'
+          }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: '#fff' }}>
               <Button type="primary" onClick={toggleCollapsed}>
                 {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               </Button>
             </div>
-            
+            {user && (
               <div style={{ display: 'flex', alignItems: 'center', padding: '16px', backgroundColor: '#fff', justifyContent: 'center' }}>
                 <Avatar size={30} icon={<UserOutlined />} />
                 {!collapsed && (
                   <span style={{ marginLeft: 10 }}>{user?.first_name} {user?.last_name}</span>
                 )}
               </div>
+            )}
             <Menu
-              defaultSelectedKeys={['1']}
+              selectedKeys={[selectedKey]}
               defaultOpenKeys={['sub1']}
               mode="inline"
               items={nav}
@@ -144,7 +165,7 @@ const App = ({children, user, logout}: any) => {
           </div>
         </Sider>
       )}
-      <Layout>
+      <Layout style={{ marginLeft: isMobile ? 0 : collapsed ? 80 : 200 }}>
         <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
           {children}
         </Content>

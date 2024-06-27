@@ -1,9 +1,10 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Checkbox, Form, Input, message } from 'antd';
 import type { FormProps } from 'antd';
-import { useAuth } from '../hooks/useAuth';
+import {signIn} from 'next-auth/react'
+
 
 type FieldType = {
   username: string;
@@ -13,21 +14,24 @@ type FieldType = {
 
 const Login: React.FC = () => {
   const router = useRouter();
-  const { login, user } = useAuth({ middleware: 'guest', redirectIfAuthenticated: '/dashboard' });
-  const [errors, setErrors] = useState([]);
-  const [status, setStatus] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
+
   const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
-    try {
-      await login({ setErrors, setStatus, ...values });
-      message.success('Login successful');
-    } catch (error) {
-      console.error('Error logging in:', error);
+    const resposeNextAuth = await signIn('credentials', { 
+      redirect: false, ...values 
+    })
+    if(resposeNextAuth?.error){
+      setErrors(resposeNextAuth.error.split(','))
       message.error('Login failed');
+      return
     }
+    message.success('Login successful');
+    router.push('/dashboard');
   };
 
   const onFinishFailed: FormProps<FieldType>['onFinishFailed'] = (errorInfo) => {
     console.log('Failed:', errorInfo);
+    message.error('Login failed');
   };
 
   return (
@@ -41,7 +45,7 @@ const Login: React.FC = () => {
           autoComplete="off"
         >
           <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
-          <Form.Item<FieldType>
+          <Form.Item
             label="Username"
             name="username"
             rules={[{ required: true, message: 'Please input your username!' }]}
@@ -50,7 +54,7 @@ const Login: React.FC = () => {
             <Input className="border rounded py-2 px-4 w-full" />
           </Form.Item>
 
-          <Form.Item<FieldType>
+          <Form.Item
             label="Password"
             name="password"
             rules={[{ required: true, message: 'Please input your password!' }]}
@@ -59,16 +63,16 @@ const Login: React.FC = () => {
             <Input.Password className="border rounded py-2 px-4 w-full" />
           </Form.Item>
 
-          <Form.Item<FieldType>
-            name="remember"
-            valuePropName="checked"
-            className="mb-4"
-          >
+          <Form.Item name="remember" valuePropName="checked" className="mb-4">
             <Checkbox>Remember me</Checkbox>
           </Form.Item>
 
           <Form.Item className="mb-0 text-center">
-            <Button type="primary" htmlType="submit" className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+            >
               Submit
             </Button>
           </Form.Item>
