@@ -1,12 +1,13 @@
 // types.ts
 
 export interface Room {
+    id: number;
     numero: number;
     tipo: string;
     precio: number;
-    estado: 'Disponible' | 'Ocupado';
+    estado: 'Libre' | 'Ocupado';
     descripcion: string;
-    nuemro_camas: number;
+    numero_camas: number;
 }
 
 export interface ApiResponse<T> {

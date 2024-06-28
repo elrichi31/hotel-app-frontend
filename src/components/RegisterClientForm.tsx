@@ -49,18 +49,21 @@ const RegisterClientForm: React.FC = () => {
     };
 
     return (
-        <>
-            <Steps current={currentStep} style={{ marginBottom: '24px' }}>
-                <Step title="Registrar Cliente" />
-                <Step title="Procesar venta" />
-                <Step title="Resumen" />
-            </Steps>
+        <div className=' flex flex-col'>
+            <div className='mx-auto sm:mx-1'>
+                <Steps current={currentStep} style={{ marginBottom: '24px'}}>
+                    <Step title="Registrar Cliente" />
+                    <Step title="Procesar venta" />
+                    <Step title="Resumen" />
+                </Steps>
+            </div>
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={currentStep === 0 ? onFinishFirstStep : undefined}
                 initialValues={{ remember: true }}
-                style={{ width: '90%', margin: 'auto' }}
+                style={{ width: '90%'}}
+                className='mx-auto'
             >
                 {currentStep === 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
@@ -168,7 +171,7 @@ const RegisterClientForm: React.FC = () => {
                     </div>
                 )}
             </Form>
-        </>
+        </div>
     );
 };
 
