@@ -15,3 +15,13 @@ export interface ApiResponse<T> {
     status: number;
     message: string;
 }
+
+export interface Client {
+    id: number;
+    nombre: string;
+    apellido: string;
+    email: string;
+    telefono: string; 
+    direccion: string;
+    identificacion: string;
+}
