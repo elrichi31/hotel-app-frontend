@@ -6,13 +6,13 @@ import { Form, Steps } from 'antd';
 const { Item } = Form;
 const { Step } = Steps;
 
-export default function RegisterClientView() {
+const RegisterClientView = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
   return (
-    <div className='flex flex-col'>
-      <div className='mx-auto sm:mx-1'>
-        <Steps current={currentStep} style={{ marginBottom: '24px' }}>
+    <div className='flex-col'>
+      <div className='mb-8 mx-auto w-48 min-[576px]:w-full'>
+        <Steps current={currentStep} className=''>
           <Step title="Registrar Cliente" />
           <Step title="Procesar venta" />
           <Step title="Resumen" />
@@ -20,7 +20,7 @@ export default function RegisterClientView() {
       </div>
       {
         currentStep === 0 && (
-          <RegisterClientForm current={currentStep} setCurrentStep={setCurrentStep}/>
+          <RegisterClientForm current={currentStep} setCurrentStep={setCurrentStep} />
         )
       }
 
@@ -35,3 +35,5 @@ export default function RegisterClientView() {
     </div>
   )
 }
+
+export default RegisterClientView;

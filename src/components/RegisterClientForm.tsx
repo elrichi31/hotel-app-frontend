@@ -1,3 +1,4 @@
+"use client"
 import React, { useState } from 'react';
 import { Form, Input, Button, message, Alert } from 'antd';
 import ClientService from '@/services/ClientService';
@@ -5,20 +6,48 @@ import { useSession } from 'next-auth/react';
 
 const { Item } = Form;
 
-const RegisterClientForm = ({ current, setCurrentStep }: any) => {
+const RegisterClientForm = ({ handlePanelChange }: any) => {
     const { data: session } = useSession();
     const [form] = Form.useForm();
     const [errors, setErrors] = useState<any>();
-    const [loading, setLoading] = useState(false); 
+    const [loading, setLoading] = useState(false);
+    const [client, setClient] = useState<any>();
+    const [isValidated, setIsValidated] = useState(false);
+    
     const onFinishFirstStep = async (values: any) => {
         try {
             if (session?.user?.token?.token) {
-                const res = await ClientService.createClient(values, session.user.token.token);
-                form.resetFields();
-                setCurrentStep(1);
-                message.success('Cliente registrado correctamente');
+                if (isValidated){
+                    const res = await ClientService.updateClient(client.id, values, session.user.token.token);
+                    form.resetFields();
+                    form.setFieldsValue({ 
+                        nombre: values.nombre,
+                        apellido: values.apellido,
+                        email: values.email,
+                        telefono: values.telefono,
+                        direccion: values.direccion,
+                        identificacion: values.identificacion,
+                    });
+                    handlePanelChange();
+                    message.success('Cliente actualizado correctamente');
+                } else {
+                    const res = await ClientService.createClient(values, session.user.token.token);
+                    form.resetFields();
+                    form.setFieldsValue({ 
+                        nombre: values.nombre,
+                        apellido: values.apellido,
+                        email: values.email,
+                        telefono: values.telefono,
+                        direccion: values.direccion,
+                        identificacion: values.identificacion,
+                    });
+                    handlePanelChange();
+                    setIsValidated(true);
+                    message.success('Cliente registrado correctamente');
+                }
             }
         } catch (error) {
+            console.error('Error creating client:', error);
             message.error('Error al registrar cliente');
         }
     };
@@ -39,14 +68,16 @@ const RegisterClientForm = ({ current, setCurrentStep }: any) => {
                         direccion: client.direccion,
                         identidicacion: client.identificacion, 
                     });
-                    setCurrentStep(1); // Avanzar al siguiente paso después de validar la cédula
+                    handlePanelChange(); // Avanzar al siguiente paso después de validar la cédula
+                    setClient(client);
+                    setIsValidated(true);
                     message.success('Cédula validada correctamente');
                 } else {
                     message.warning('No se encontró ningún cliente con esta cédula');
                 }
             }
-        } catch (error) {
-            message.error('Error al validar la cédula');
+        } catch (error: any) {
+            message.error(error.message || 'Error al validar la cédula');
         } finally {
             setLoading(false);
         }
@@ -56,9 +87,9 @@ const RegisterClientForm = ({ current, setCurrentStep }: any) => {
         <Form
             form={form}
             layout="vertical"
-            onFinish={current === 0 ? onFinishFirstStep : undefined}
+            onFinish={onFinishFirstStep}
             initialValues={{ remember: true }}
-            style={{ width: '90%' }}
+            style={{ width: '95%' }}
             className='mx-auto'
         >
             <div className='mb-5'>
@@ -147,7 +178,7 @@ const RegisterClientForm = ({ current, setCurrentStep }: any) => {
 
                 <Item>
                     <Button type="primary" htmlType="submit" block>
-                        Siguiente
+                        {isValidated ? 'Actualizar Cliente' : 'Registrar Cliente'}
                     </Button>
                 </Item>
             </div>

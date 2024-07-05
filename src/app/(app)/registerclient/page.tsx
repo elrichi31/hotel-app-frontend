@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { Button, message, Steps, theme } from 'antd';
 import RegisterClientView from '@/views/RegisterClientView';
+import CollapseView from '@/views/CollapseView';
 export const metadata: Metadata = {
     title: 'Register new client',
     description: 'Dashboard page',
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 const RegisterClientPage: React.FC = () => {
     return (
         <div>
-            <RegisterClientView />
+            <CollapseView/>
         </div>
 
     );

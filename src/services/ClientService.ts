@@ -31,8 +31,12 @@ const ClientService = {
                 },
             });
             return response.data;
-        } catch (error) {
-            throw new Error('Error al obtener el cliente por cédula');
+        } catch (error: any) {
+            if (error.response.status === 404) {
+                throw new Error('Cliente no encontrado');
+            } else {
+                throw new Error('Error al obtener el cliente');
+            }
         }
     },
 
