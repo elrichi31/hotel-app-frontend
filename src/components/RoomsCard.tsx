@@ -7,7 +7,7 @@ import RoomService from '@/services/RoomService';
 import { useSession } from 'next-auth/react';
 
 const RoomsCard = ({ room, onUpdate }: any) => {
-    const { id, numero, tipo, precio, estado, descripcion, numero_camas } = room;
+    const { id, numero, tipo, estado, descripcion, numero_camas, precios = [] } = room;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { data: session } = useSession();
 
@@ -22,7 +22,7 @@ const RoomsCard = ({ room, onUpdate }: any) => {
                 const updated = await RoomService.updateRoom(id, updatedRoom, session.user.token.token);
                 message.success('Habitación actualizada exitosamente');
                 setIsModalOpen(false);
-                onUpdate(updated);
+                onUpdate(updated); // Pasa la habitación actualizada al estado
             }
         } catch (error) {
             console.error('Error updating room:', error);
@@ -69,9 +69,16 @@ const RoomsCard = ({ room, onUpdate }: any) => {
     return (
         <Card title={titleNew} style={{ width: 250, margin: '16px' }} actions={[editar, eliminar]}>
             <p><strong>Tipo:</strong> {tipo}</p>
-            <p><strong>Precio:</strong> ${precio}</p>
             <p><strong>Descripción:</strong> {descripcion}</p>
             <p><strong>Número de camas:</strong> {numero_camas}</p>
+            <p><strong>Precios:</strong></p>
+            <ul>
+                {precios.map((precio: any, index: number) => (
+                    <li key={index}>
+                        {precio.numero_personas} personas: ${precio.precio}
+                    </li>
+                ))}
+            </ul>
             <EditRoomModal open={isModalOpen} onCancel={handleCancel} onOk={handleOk} room={room} edit={true} />
         </Card>
     );

@@ -31,14 +31,20 @@ export default function RoomsPage() {
     const handleOk = async (values: any) => {
         try {
             if (session?.user?.token?.token) {
-                const newRoom = await RoomService.createRoom(values, session.user.token.token);
+                const parsedValues = {...values, fechaInicioOcupacion: null, fechaFinOcupacion: null}
+                console.log(parsedValues)
+                const newRoom = await RoomService.createRoom(parsedValues, session.user.token.token);
                 message.success('Habitación creada exitosamente');
                 setIsModalOpen(false);
                 setRooms([...rooms, newRoom]); // Agrega la nueva habitación al estado local
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating room:', error);
-            message.error('Error al crear la habitación');
+            if (error.response && error.response.data && error.response.data.message) {
+                message.error(error.response.data.message); // Mostrar el mensaje de error específico
+            } else {
+                message.error('Error al crear la habitación');
+            }
         }
     };
 
@@ -79,4 +85,3 @@ export default function RoomsPage() {
         </div>
     );
 }
-

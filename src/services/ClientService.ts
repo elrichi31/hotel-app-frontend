@@ -25,7 +25,7 @@ const ClientService = {
 
     async getClientByCedula(cedula: string, token: string): Promise<Client> {
         try {
-            const response = await axios.get(`/clientes/cedula/${encodeURIComponent(cedula)}`, {
+            const response = await axios.get(`/personas/validate/${encodeURIComponent(cedula)}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -53,9 +53,9 @@ const ClientService = {
         }
     },
 
-    async createClient(newClient: Client, token: string): Promise<Client> {
+    async createClient(newClient: any, token: string): Promise<Client> {
         try {
-            const response = await axios.post('/clientes', newClient, {
+            const response = await axios.post('/personas', newClient, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

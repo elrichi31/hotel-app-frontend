@@ -48,7 +48,7 @@ const handler = NextAuth({
   },
   session: {
     strategy: 'jwt',
-    maxAge: 2 * 60 * 60 // 4 hours
+    maxAge: 60 * 60 // 4 hours
   },
   // Redirigir a /login en caso de error durante la autenticación
 });

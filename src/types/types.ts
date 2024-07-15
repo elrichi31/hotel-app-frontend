@@ -20,8 +20,8 @@ export interface Client {
     id: number;
     nombre: string;
     apellido: string;
-    email: string;
-    telefono: string; 
-    direccion: string;
-    identificacion: string;
+    tipo_documento: string;
+    numero_documento: string;
+    ciudadania: string;
+    procedencia: string
 }

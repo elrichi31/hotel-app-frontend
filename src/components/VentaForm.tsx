@@ -4,11 +4,24 @@ import SelectedCard from '@/components/SelectedCard';
 import RoomService from '@/services/RoomService';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
-
+import { Client } from '@/types/types';
 const { RangePicker } = DatePicker;
 const { Item } = Form;
 
-const CardSelectionForm = () => {
+const formatDate = (date: any) => {
+  if (!date) return '';
+  const months = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const day = date.date();
+  const month = months[date.month()];
+  const year = date.year();
+  return `${day} de ${month} ${year}`;
+};
+
+const CardSelectionForm = ({client}: any) => {
+  const [form] = Form.useForm();
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [errors, setErrors] = useState<any>();
   const [rooms, setRooms] = useState<any[]>([]);
@@ -40,10 +53,11 @@ const CardSelectionForm = () => {
       }
 
       const [startDate, endDate] = dates;
-      const days = endDate.diff(startDate, 'day') + 1;  // Incluir el día de salida en el cálculo
+      const nights = endDate.startOf('day').diff(startDate.startOf('day'), 'day');
+
       const totalAmount = selectedCards.reduce((sum, cardId) => {
         const room = rooms.find((room) => room.id === cardId);
-        return sum + (room ? room.precio * days : 0);
+        return sum + (room ? room.precio * nights : 0);
       }, 0);
 
       console.log('Total:', totalAmount);
@@ -70,7 +84,6 @@ const CardSelectionForm = () => {
   };
 
   const disabledDate = (current: any) => {
-    // Can not select days before today and today
     return current && current < dayjs().startOf('day');
   };
 
@@ -87,10 +100,26 @@ const CardSelectionForm = () => {
     message.success('Cards and billing information submitted successfully');
   };
 
-  return (
-    <Form layout="vertical" onFinish={handleSubmit} style={{ width: "95%", margin: 'auto' }}>
+  const handleCopyBillingData = () => {
+    console.log('Client:', client);
+    form.setFieldsValue({
+      nombre: client.nombre,
+      apellido: client.apellido,
+      email: client.email,
+      telefono: client.telefono,
+      direccion: client.direccion,
+      identificacion: client.identificacion,
+    });
 
-      <h2 className="mt-4 mb-2">Datos de Facturación</h2>
+  }
+  return (
+    <Form layout="vertical" onFinish={handleSubmit} style={{ width: "95%", margin: 'auto' }} form={form}>
+
+      <div className='flex items-center justify-between'>
+        <h2 className="mt-4 mb-2 text-lg">Datos de Facturación</h2>
+        <Button type="primary" onClick={handleCopyBillingData}>Copiar datos de facturación</Button>
+      </div>
+
 
       <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -163,21 +192,12 @@ const CardSelectionForm = () => {
           <Input placeholder="Av. Principal 123" />
         </Item>
 
-        <h2 className="mt-4 mb-2">Datos para el ingreso</h2>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Item name="fechaHoraIngreso" className="w-[50%]" label="Fecha y Hora de Ingreso" rules={[{ required: true, message: 'Por favor ingrese la fecha y hora de ingreso' }]}>
-            <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" className='w-full' disabledDate={disabledDate} />
-          </Item>
-          <Item name="fechaHoraSalida" className="w-[48%]" label="Fecha y Hora de Salida" rules={[{ required: true, message: 'Por favor ingrese la fecha y hora de salida' }]}>
-            <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" className='w-full' disabledDate={disabledDate} />
-          </Item>
-        </div>
+        <h2 className="mt-4 mb-2 text-lg">Datos para el ingreso</h2>
         <Item name="rangoFechas" label="Rango de Fechas" rules={[{ required: true, message: 'Por favor ingrese el rango de fechas' }]} className='w-full'>
-          <RangePicker size={"middle"} className='w-full' onChange={handleDateChange} disabledDate={disabledDate} />
+          <RangePicker size={"middle"} className='w-full' format={formatDate} onChange={handleDateChange} disabledDate={disabledDate} />
         </Item>
 
-        <h2 className="mt-4 mb-2">Seleccionar habitaciones</h2>
+        <h2 className="mt-4 mb-2 text-lg">Seleccionar habitaciones</h2>
         <div className='flex flex-wrap gap-3 mb-8 justify-center'>
           {rooms.map((room) => (
             <SelectedCard

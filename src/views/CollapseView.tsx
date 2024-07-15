@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Collapse, Space } from 'antd';
 import RegisterClientForm from '@/components/RegisterClientForm';
 import VentaForm from '@/components/VentaForm';
+import { Client } from '@/types/types';
 const CollapseView = () => {
     const [activeKeys, setActiveKeys] = useState(['1']);
     const [enabledKeys, setEnabledKeys] = useState(['1']);
-
+    const [client, setClient] = useState<Client>();
     const handleKeys = () => {
         setEnabledKeys([...enabledKeys, '2']);
         setActiveKeys([...activeKeys, '2']);
@@ -27,12 +28,12 @@ const CollapseView = () => {
                     {
                         key: '1',
                         label: 'Registro de cliente',
-                        children: <RegisterClientForm handlePanelChange={handleKeys} />,
+                        children: <RegisterClientForm handlePanelChange={handleKeys} newClient={setClient} />,
                     },
                     {
                         key: '2',
                         label: 'Procesar venta',
-                        children: <VentaForm/>,
+                        children: <VentaForm client={client}/>,
                         collapsible: enabledKeys.includes('2') ? 'header' : 'disabled',
                     },
                 ]}
