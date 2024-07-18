@@ -1,47 +1,56 @@
 "use client"
-import React, { useState } from 'react';
-import { Form, Input, Button, message, Alert, Space, Select } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, message, Alert, Select } from 'antd';
 import ClientService from '@/services/ClientService';
 import { useSession } from 'next-auth/react';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Client } from '@/types/types';
 
 const { Item } = Form;
 const { Option } = Select;
 
-const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
+const RegisterClientForm = ({ handlePanelChange, updateClientIds }: any) => {
     const { data: session } = useSession();
     const [form] = Form.useForm();
     const [errors, setErrors] = useState<any>();
     const [loading, setLoading] = useState(false);
-    const [client, setClient] = useState<any>();
-    const [isValidated, setIsValidated] = useState(false);
+    const [validatedClients, setValidatedClients] = useState<Record<number, boolean>>({});
+    const [clientIds, setClientIds] = useState<number[]>([]);
 
-    const onFinish = async (values: any) => {
+    useEffect(() => {
+        updateClientIds(clientIds);
+    }, [clientIds, updateClientIds]);
+
+    const onFinish = async (index: number) => {
         try {
             if (session?.user?.token?.token) {
-                const clientsData = values.users;
-                if (isValidated) {
-                    const updatedClients = await Promise.all(
-                        clientsData.map((clientData: any) =>
-                            ClientService.updateClient(clientData.id, clientData, session.user.token.token)
-                        )
-                    );
-                    message.success('Clientes actualizados correctamente');
+                const clientsData = form.getFieldsValue();
+                const data: Client = clientsData.users[index];
+                const parsedClients = {
+                    personas: [data]
+                };
+
+                if (validatedClients[index]) {
+                    const res = await ClientService.updateClient(data.id as number, data, session.user.token.token);
+                    console.log('Cliente actualizado:', res);
+                    message.success('Cliente actualizado correctamente');
                 } else {
-                    const parsedClients = {
-                        personas: clientsData
-                    }
-                    console.log(parsedClients)
-                    const newClients = await ClientService.createClient(parsedClients, session.user.token.token);
-                    message.success('Clientes registrados correctamente');
+                    const newClientResponse: any = await ClientService.createClient(parsedClients, session.user.token.token);
+                    const newClientId = newClientResponse[0].id;
+                    const fieldsValue = form.getFieldsValue();
+                    fieldsValue.users[index].id = newClientId;
+                    form.setFieldsValue(fieldsValue);
+                    setValidatedClients({ ...validatedClients, [index]: true });
+                    setClientIds((prevIds) => [...prevIds, newClientId]);
+                    console.log('Cliente registrado:', newClientResponse[0]);
+                    message.success('Cliente registrado correctamente');
                 }
-                form.resetFields();
+
                 handlePanelChange();
-                newClient(clientsData);
             }
         } catch (error) {
             console.error('Error creando/actualizando clientes:', error);
-            message.error('Error al registrar clientes');
+            message.error('Error al registrar cliente');
         }
     };
 
@@ -51,7 +60,7 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
                 const token = session.user.token.token;
                 setLoading(true);
                 const cedula = form.getFieldValue(['users', index, 'numero_documento']);
-                const client = await ClientService.getClientByCedula(cedula, token);
+                const client: Client = await ClientService.getClientByCedula(cedula, token);
                 if (client) {
                     const fieldsValue = form.getFieldsValue();
                     fieldsValue.users[index] = {
@@ -61,14 +70,14 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
                         tipo_documento: client?.tipo_documento,
                         numero_documento: client?.numero_documento,
                         ciudadania: client?.ciudadania,
-                        procedencia: client?.procedencia
-                        
+                        procedencia: client?.procedencia,
+                        id: client?.id,
                     };
                     form.setFieldsValue(fieldsValue);
-                    setClient(client);
-                    setIsValidated(true);
-                    newClient(client);
-                    handlePanelChange()
+                    setValidatedClients({ ...validatedClients, [index]: true });
+                    setClientIds((prevIds: any) => [...prevIds, client.id]);
+                    console.log('Cliente validado:', clientIds);
+                    handlePanelChange();
                     message.success('Cédula validada correctamente');
                 } else {
                     message.warning('No se encontró ningún cliente con esta cédula');
@@ -81,11 +90,19 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
         }
     };
 
+    const handleRemove = (name: number, index: number) => {
+        const updatedClientIds = [...clientIds];
+        updatedClientIds.splice(index, 1);
+        setClientIds(updatedClientIds);
+        form.setFieldsValue({
+            users: form.getFieldValue('users').filter((_: any, i: number) => i !== index),
+        });
+    };
+
     return (
         <Form
             form={form}
             layout="vertical"
-            onFinish={onFinish}
             initialValues={{ remember: true }}
             className='mx-auto w-[90%]'
         >
@@ -141,7 +158,7 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
                                         </Item>
                                     </div>
 
-                                    <div className='flex sm:flex items-center'>
+                                    <div className='flex flex-col md:flex-row items-start md:items-center'>
                                         <Item
                                             {...restField}
                                             label="Nro de documento"
@@ -153,7 +170,7 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
                                         >
                                             <Input placeholder="1234567890" />
                                         </Item>
-                                        <Button type="primary" className='' onClick={() => handleValidation(index)} loading={loading}>
+                                        <Button type="primary" className='mb-5 md:mb-0 md:mt-1' onClick={() => handleValidation(index)} loading={loading}>
                                             Validar Cédula
                                         </Button>
                                     </div>
@@ -181,12 +198,24 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
                                         >
                                             <Input placeholder="Colombia" />
                                         </Item>
+                                        <Item
+                                            {...restField}
+                                            name={[name, 'id']}
+                                            hidden={true}
+                                        >
+                                            <Input />
+                                        </Item>
                                     </div>
                                 </div>
-                                <Button type='dashed' danger className='flex h-[100%] w-full' onClick={() => remove(name)} >
-                                    <MinusCircleOutlined />
-                                    <p>Eliminar persona</p>
-                                </Button>
+                                <div className='flex flex-col md:flex-row space-y-3 md:space-x-5 md:space-y-0'>
+                                    <Button type="primary" htmlType="submit" loading={loading} onClick={() => { onFinish(index) }}>
+                                        {validatedClients[index] ? 'Actualizar Cliente' : 'Registrar Cliente'}
+                                    </Button>
+                                    <Button type='dashed' danger className='flex' onClick={() => { remove(name); handleRemove(name, index); }} >
+                                        <MinusCircleOutlined />
+                                        <p>Eliminar persona</p>
+                                    </Button>
+                                </div>
                             </div>
                         ))}
                         <Form.Item>
@@ -198,11 +227,14 @@ const RegisterClientForm = ({ handlePanelChange, newClient }: any) => {
                 )}
             </Form.List>
 
-            <Item>
-                <Button type="primary" htmlType="submit" block loading={loading}>
-                    {isValidated ? 'Actualizar Clientes' : 'Registrar Clientes'}
-                </Button>
-            </Item>
+            <div>
+                <h3 className='mt-4'>IDs de Clientes Validados/Registrados:</h3>
+                <ul>
+                    {clientIds.map((id) => (
+                        <li key={id}>{id}</li>
+                    ))}
+                </ul>
+            </div>
         </Form>
     );
 };

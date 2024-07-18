@@ -17,7 +17,7 @@ export interface ApiResponse<T> {
 }
 
 export interface Client {
-    id: number;
+    id?: number;
     nombre: string;
     apellido: string;
     tipo_documento: string;

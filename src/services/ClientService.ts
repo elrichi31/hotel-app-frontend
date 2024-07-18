@@ -42,7 +42,7 @@ const ClientService = {
 
     async updateClient(id: number, updatedClient: Partial<Client>, token: string): Promise<Client> {
         try {
-            const response = await axios.put(`/clientes/${id}`, updatedClient, {
+            const response = await axios.put(`/personas/${id}`, updatedClient, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

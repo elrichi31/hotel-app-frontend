@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, message, DatePicker } from 'antd';
-import SelectedCard from '@/components/SelectedCard';
+import { Form, Input, Button, message, DatePicker, InputNumber } from 'antd';
+import SelectableCard from '@/components/SelectedCard';
 import RoomService from '@/services/RoomService';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
-import { Client } from '@/types/types';
+import VentasService from '@/services/VentasService';
+
 const { RangePicker } = DatePicker;
 const { Item } = Form;
 
@@ -20,13 +21,15 @@ const formatDate = (date: any) => {
   return `${day} de ${month} ${year}`;
 };
 
-const CardSelectionForm = ({client}: any) => {
+const CardSelectionForm = ({ setVenta, sendInfo, personIds }: any) => {
   const [form] = Form.useForm();
-  const [selectedCards, setSelectedCards] = useState<string[]>([]);
-  const [errors, setErrors] = useState<any>();
+  const [selectedCards, setSelectedCards] = useState<{ id: string, price: number, priceId: number }[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
+  const [subtotal, setSubtotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
   const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [discount, setDiscount] = useState<number>(0); // Valor predeterminado de 0 para el descuento
+  const [loading, setLoading] = useState<boolean>(false); // Estado para el botón de enviar
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -34,7 +37,6 @@ const CardSelectionForm = ({client}: any) => {
       try {
         if (session?.user?.token?.token) {
           const roomsData = await RoomService.getAllRooms(session.user.token.token);
-          console.log('Rooms:', roomsData);
           setRooms(roomsData);
         }
       } catch (error) {
@@ -48,6 +50,7 @@ const CardSelectionForm = ({client}: any) => {
   useEffect(() => {
     const calculateTotal = () => {
       if (!dates || selectedCards.length === 0) {
+        setSubtotal(0);
         setTotal(0);
         return;
       }
@@ -55,28 +58,31 @@ const CardSelectionForm = ({client}: any) => {
       const [startDate, endDate] = dates;
       const nights = endDate.startOf('day').diff(startDate.startOf('day'), 'day');
 
-      const totalAmount = selectedCards.reduce((sum, cardId) => {
-        const room = rooms.find((room) => room.id === cardId);
-        return sum + (room ? room.precio * nights : 0);
+      const subtotalAmount = selectedCards.reduce((sum, card) => {
+        return sum + (card.price * nights);
       }, 0);
 
-      console.log('Total:', totalAmount);
-
-      setTotal(totalAmount);
+      const totalWithDiscount = subtotalAmount - discount;
+      setSubtotal(subtotalAmount);
+      setTotal(totalWithDiscount > 0 ? totalWithDiscount : 0);
     };
 
     calculateTotal();
-  }, [selectedCards, dates, rooms]);
+  }, [selectedCards, dates, discount]);
 
-  const handleCardChange = (cardId: string) => {
-    setSelectedCards((prev) =>
-      prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId]
-    );
+  const handleCardChange = (cardId: string, price: number, priceId: number) => {
+    setSelectedCards((prev) => {
+      const existingCard = prev.find((card) => card.id === cardId);
+      if (existingCard) {
+        return prev.filter((card) => card.id !== cardId); // Deseleccionar la tarjeta si ya está seleccionada
+      } else {
+        return [...prev, { id: cardId, price, priceId }]; // Seleccionar la tarjeta si no está seleccionada
+      }
+    });
   };
 
   const handleDateChange = (dates: any) => {
     if (dates) {
-      console.log('Selected Dates:', dates);
       setDates([dates[0], dates[1]]);
     } else {
       setDates(null);
@@ -87,111 +93,41 @@ const CardSelectionForm = ({client}: any) => {
     return current && current < dayjs().startOf('day');
   };
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = async (values: any) => {
     if (selectedCards.length === 0) {
       message.warning('Please select at least one card.');
       return;
     }
 
-    console.log('Selected Cards:', selectedCards);
-    console.log('Form Values:', values);
-    const newValues = { ...values, selectedCards, total };
-    console.log(newValues);
-    message.success('Cards and billing information submitted successfully');
+    const habitaciones = selectedCards.map(card => card.id);
+    const precios = selectedCards.reduce((acc, card) => {
+      acc[card.id] = card.priceId;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const fecha_inicio = dates ? dates[0].format('YYYY-MM-DD') : null;
+    const fecha_fin = dates ? dates[1].format('YYYY-MM-DD') : null;
+
+    const newValues = { habitaciones, precios, fecha_inicio, fecha_fin, subtotal, total, descuento: discount, personas: personIds };
+    setVenta(newValues);
+
+    if (session?.user?.token?.token) {
+      setLoading(true); // Activar el estado de carga
+      try {
+        await VentasService.createVenta(session.user.token.token, newValues);
+        message.success('Cards and billing information submitted successfully');
+      } catch (error) {
+        console.error('Error creating venta:', error);
+        message.error('Error al crear la venta');
+      } finally {
+        setLoading(false); // Desactivar el estado de carga
+      }
+    }
   };
 
-  const handleCopyBillingData = () => {
-    console.log('Client:', client);
-    form.setFieldsValue({
-      nombre: client.nombre,
-      apellido: client.apellido,
-      email: client.email,
-      telefono: client.telefono,
-      direccion: client.direccion,
-      identificacion: client.identificacion,
-    });
-
-  }
   return (
     <Form layout="vertical" onFinish={handleSubmit} style={{ width: "95%", margin: 'auto' }} form={form}>
-
-      <div className='flex items-center justify-between'>
-        <h2 className="mt-4 mb-2 text-lg">Datos de Facturación</h2>
-        <Button type="primary" onClick={handleCopyBillingData}>Copiar datos de facturación</Button>
-      </div>
-
-
       <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Item
-            label="Nombre"
-            name="nombre"
-            rules={[{ required: true, message: '¡Por favor ingresa el nombre!' }]}
-            help={errors?.first_name}
-            validateStatus={errors?.first_name ? 'error' : undefined}
-            style={{ marginBottom: '16px', width: '50%' }}
-          >
-            <Input placeholder="Juan" />
-          </Item>
-
-          <Item
-            label="Apellido"
-            name="apellido"
-            rules={[{ required: true, message: '¡Por favor ingresa el apellido!' }]}
-            help={errors?.last_name}
-            validateStatus={errors?.last_name ? 'error' : undefined}
-            style={{ marginBottom: '16px', width: '48%' }}
-          >
-            <Input placeholder="Pérez" />
-          </Item>
-        </div>
-
-        <Item
-          label="Correo Electrónico"
-          name="email"
-          rules={[
-            { required: true, message: '¡Por favor ingresa el correo electrónico!' },
-            { type: 'email', message: '¡Por favor ingresa un correo válido!' },
-          ]}
-          help={errors?.email}
-          validateStatus={errors?.email ? 'error' : undefined}
-          style={{ marginBottom: '16px' }}
-        >
-          <Input placeholder="correo@example.com" />
-        </Item>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Item
-            label="Teléfono"
-            name="telefono"
-            rules={[{ required: true, message: '¡Por favor ingresa el teléfono!' }]}
-            help={errors?.phone_number}
-            validateStatus={errors?.phone_number ? 'error' : undefined}
-            style={{ marginBottom: '16px', width: '50%' }}
-          >
-            <Input placeholder="1234567890" />
-          </Item>
-          <Item
-            label="Cédula"
-            name="identificacion"
-            rules={[{ required: true, message: '¡Por favor ingresa la cédula!' }]}
-            style={{ marginBottom: '16px', width: '48%' }}
-          >
-            <Input placeholder="1700000000" />
-          </Item>
-        </div>
-
-        <Item
-          label="Dirección"
-          name="direccion"
-          rules={[{ required: true, message: '¡Por favor ingresa la dirección!' }]}
-          help={errors?.address}
-          validateStatus={errors?.address ? 'error' : undefined}
-          style={{ marginBottom: '16px' }}
-        >
-          <Input placeholder="Av. Principal 123" />
-        </Item>
-
         <h2 className="mt-4 mb-2 text-lg">Datos para el ingreso</h2>
         <Item name="rangoFechas" label="Rango de Fechas" rules={[{ required: true, message: 'Por favor ingrese el rango de fechas' }]} className='w-full'>
           <RangePicker size={"middle"} className='w-full' format={formatDate} onChange={handleDateChange} disabledDate={disabledDate} />
@@ -200,20 +136,27 @@ const CardSelectionForm = ({client}: any) => {
         <h2 className="mt-4 mb-2 text-lg">Seleccionar habitaciones</h2>
         <div className='flex flex-wrap gap-3 mb-8 justify-center'>
           {rooms.map((room) => (
-            <SelectedCard
-              key={room.id}
-              room={room}
-              onSelect={() => handleCardChange(room.id)}
-              isSelected={selectedCards.includes(room.id)}
-            />
+            <div key={room.id} className='flex flex-col items-center'>
+              <SelectableCard
+                room={room}
+                onSelect={(price: number, priceId: number) => handleCardChange(room.id, price, priceId)}
+                isSelected={selectedCards.some(card => card.id === room.id)}
+              />
+            </div>
           ))}
         </div>
+
+        <Item name="discount" label="Descuento" layout='horizontal'>
+          <InputNumber min={0} onChange={(value) => setDiscount(value ?? 0)} />
+        </Item>
+
         <div>
-          <p>Total: ${total}</p>
+          <p>Subtotal: ${subtotal.toFixed(2)}</p>
+          <p>Total: ${total.toFixed(2)}</p>
         </div>
 
         <Item>
-          <Button type="primary" htmlType="submit" block>
+          <Button type="primary" htmlType="submit" block loading={loading}>
             Enviar
           </Button>
         </Item>

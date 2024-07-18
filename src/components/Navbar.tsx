@@ -24,6 +24,7 @@ const nav: MenuItem[] = [
   { key: '/dashboard', icon: <PieChartOutlined />, label: (<a href='/dashboard'>Dashboard</a>) },
   { key: '/registerclient', icon: <DesktopOutlined />, label: (<a href='/registerclient'>Register</a>) },
   { key: '/rooms', icon: <ContainerOutlined />, label: (<a href='/rooms'>Habitaciones</a>)  },
+  { key: '/ventas ', icon: <ContainerOutlined />, label: (<a href='/ventas'>Ventas</a>)  },
   {
     key: 'sub1',
     label: 'Navigation One',
