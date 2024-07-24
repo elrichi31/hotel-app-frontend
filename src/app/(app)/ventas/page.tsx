@@ -2,10 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import VentasService from '@/services/VentasService';
-import { Spin, Alert } from 'antd';
+import { Spin, Alert, message } from 'antd';
 import { useSession } from 'next-auth/react';
+import VentaDetails from '@/components/VentaDetails';
 
-const VentaDetails = () => {
+const Page = () => {
     const { data: session } = useSession();
     const router = useRouter();
     const [ventas, setVentas] = useState<any[]>([]);
@@ -18,16 +19,27 @@ const VentaDetails = () => {
                 try {
                     const ventasData = await VentasService.getAllVentas(session.user.token.token);
                     setVentas(ventasData);
-                    console.log('Ventas:', ventasData); 
+                    console.log('Ventas:', ventasData);
                     setLoading(false);
                 } catch (error) {
                     setError('Error al obtener las ventas');
                     setLoading(false);
                 }
-            }
+            };
             fetchVentas();
         }
     }, [session]);
+
+    const handleDelete = async (ventaId: number) => {
+        try {
+            if (session?.user?.token?.token) {
+                await VentasService.deleteVenta(session.user.token.token, ventaId);
+                setVentas(ventas.filter((venta) => venta.id !== ventaId));
+            }
+        } catch (error) {
+            message.error('Error al eliminar la venta');
+        }
+    };
 
     if (loading) {
         return <Spin />;
@@ -40,46 +52,13 @@ const VentaDetails = () => {
     return (
         <div className="container mx-auto p-4">
             <h1 className="text-2xl font-bold mb-4">Detalles de las Ventas</h1>
-            {ventas.map((venta) => (
-                <div key={venta.id} className="mb-8">
-                    <div className="mb-4">
-                        <h2 className="text-xl font-semibold">Información de la Venta #{venta.id}</h2>
-                        <p><strong>Fecha Inicio:</strong> {new Date(venta.fecha_inicio).toLocaleDateString()}</p>
-                        <p><strong>Fecha Fin:</strong> {new Date(venta.fecha_fin).toLocaleDateString()}</p>
-                        <p><strong>Descuento:</strong> ${venta.descuento}</p>
-                        <p><strong>Subtotal:</strong> ${venta.subtotal}</p>
-                        <p><strong>Total:</strong> ${venta.total}</p>
-                    </div>
-
-                    <div className="mb-4">
-                        <h2 className="text-xl font-semibold">Personas</h2>
-                        <ul>
-                            {venta.personas?.map((persona: any) => (
-                                <li key={persona.id}>
-                                    {persona.nombre} {persona.apellido} - {persona.tipo_documento}: {persona.numero_documento} - {persona.ciudadania} - {persona.procedencia}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div className="mb-4">
-                        <h2 className="text-xl font-semibold">Habitaciones y Precios</h2>
-                        <ul>
-                            {venta.precios?.map((precio: any) => (
-                                <li key={precio.id}>
-                                    <p><strong>Habitación {precio.habitacion.numero} ({precio.habitacion.tipo}):</strong></p>
-                                    <p>Descripción: {precio.habitacion.descripcion}</p>
-                                    <p>Estado: {precio.habitacion.estado}</p>
-                                    <p>Precio: ${precio.precio} para {precio.numero_personas} personas</p>
-                                    <p>Fechas de Ocupación: {new Date(precio.habitacion.fecha_inicio_ocupacion).toLocaleDateString()} - {new Date(precio.habitacion.fecha_fin_ocupacion).toLocaleDateString()}</p>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {ventas.map((venta) => (
+                    <VentaDetails key={venta.id} venta={venta} onDelete={handleDelete} />
+                ))}
+            </div>
         </div>
     );
 };
 
-export default VentaDetails;
+export default Page;

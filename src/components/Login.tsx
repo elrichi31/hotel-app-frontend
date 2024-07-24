@@ -5,7 +5,6 @@ import { Button, Checkbox, Form, Input, message } from 'antd';
 import type { FormProps } from 'antd';
 import {signIn} from 'next-auth/react'
 
-
 type FieldType = {
   username: string;
   password: string;

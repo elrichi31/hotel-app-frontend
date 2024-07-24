@@ -22,20 +22,9 @@ type MenuItem = Required<MenuProps>['items'][number];
 
 const nav: MenuItem[] = [
   { key: '/dashboard', icon: <PieChartOutlined />, label: (<a href='/dashboard'>Dashboard</a>) },
-  { key: '/registerclient', icon: <DesktopOutlined />, label: (<a href='/registerclient'>Register</a>) },
-  { key: '/rooms', icon: <ContainerOutlined />, label: (<a href='/rooms'>Habitaciones</a>)  },
+  { key: '/nueva-venta', icon: <DesktopOutlined />, label: (<a href='/nueva-venta'>Nueva Venta</a>) },
+  { key: '/habitaciones', icon: <ContainerOutlined />, label: (<a href='/habitaciones'>Habitaciones</a>)  },
   { key: '/ventas ', icon: <ContainerOutlined />, label: (<a href='/ventas'>Ventas</a>)  },
-  {
-    key: 'sub1',
-    label: 'Navigation One',
-    icon: <MailOutlined />,
-    children: [
-      { key: '5', label: 'Option 5' },
-      { key: '6', label: 'Option 6' },
-      { key: '7', label: 'Option 7' },
-      { key: '8', label: 'Option 8' },
-    ],
-  },
   {
     key: 'sub2',
     label: 'Navigation Two',

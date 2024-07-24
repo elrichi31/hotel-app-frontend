@@ -1,8 +1,8 @@
 "use client"
 import React, { useState } from 'react';
 import { Collapse, Space } from 'antd';
-import RegisterClientForm from '@/components/RegisterClientForm';
-import CardSelectionForm from '@/components/VentaForm';
+import ClientForm from '@/components/ClientForm';
+import VentaForm from '@/components/VentaForm';
 
 const CollapseView = () => {
     const [activeKeys, setActiveKeys] = useState(['1']);
@@ -20,11 +20,6 @@ const CollapseView = () => {
         setActiveKeys(newKeys);
     };
 
-    const sendInfo = () => {
-        console.log('Client:', clientIds);
-        console.log('Venta:', venta);
-    };
-
     const updateClientIds = (newClientIds: number[]) => {
         setClientIds(newClientIds);
     };
@@ -38,12 +33,12 @@ const CollapseView = () => {
                     {
                         key: '1',
                         label: 'Registro de cliente',
-                        children: <RegisterClientForm handlePanelChange={handleKeys} updateClientIds={updateClientIds} />,
+                        children: <ClientForm handlePanelChange={handleKeys} updateClientIds={updateClientIds} />,
                     },
                     {
                         key: '2',
                         label: 'Procesar venta',
-                        children: <CardSelectionForm setVenta={setVenta} sendInfo={sendInfo} personIds={clientIds} />,
+                        children: <VentaForm setVenta={setVenta} personIds={clientIds} />,
                         collapsible: enabledKeys.includes('2') ? 'header' : 'disabled',
                     },
                 ]}
