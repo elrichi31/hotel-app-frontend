@@ -57,8 +57,8 @@ const VentaDetails = ({ venta, onDelete }: any) => {
       <div>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Información de la Venta</h2>
-          <p><strong>Fecha Inicio:</strong> {new Date(venta.fecha_inicio).toLocaleDateString()}</p>
-          <p><strong>Fecha Fin:</strong> {new Date(venta.fecha_fin).toLocaleDateString()}</p>
+          <p><strong>Fecha Inicio:</strong> {new Date(venta.fecha_inicio).toLocaleString()}</p>
+          <p><strong>Fecha Fin:</strong> {new Date(venta.fecha_fin).toLocaleString()}</p>
           <p><strong>Descuento:</strong> ${venta.descuento}</p>
           <p><strong>Subtotal:</strong> ${venta.subtotal}</p>
           <p><strong>Total:</strong> ${venta.total}</p>

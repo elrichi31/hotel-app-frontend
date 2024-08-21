@@ -5,6 +5,8 @@ import RoomService from '@/services/RoomService';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
 import VentasService from '@/services/VentasService';
+import type { DatePickerProps } from 'antd';
+import type { Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Item } = Form;
@@ -18,7 +20,9 @@ const formatDate = (date: any) => {
     const day = date.date();
     const month = months[date.month()];
     const year = date.year();
-    return `${day} de ${month} ${year}`;
+    const hours = date.hour();
+    const minutes = date.minute().toString().padStart(2, '0');
+    return `${day} de ${month} ${year} ${hours}:${minutes}`;
 };
 
 const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
@@ -27,7 +31,7 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
     const [rooms, setRooms] = useState<any[]>([]);
     const [subtotal, setSubtotal] = useState<number>(0);
     const [total, setTotal] = useState<number>(0);
-    const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+    const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs | null] | null>(null);
     const [discount, setDiscount] = useState<number>(0); // Valor predeterminado de 0 para el descuento
     const [loading, setLoading] = useState<boolean>(false); // Estado para el botón de enviar
     const { data: session } = useSession();
@@ -75,7 +79,7 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
             }
 
             const [startDate, endDate] = dates;
-            const nights = endDate.startOf('day').diff(startDate.startOf('day'), 'day');
+            const nights = endDate ? endDate.startOf('day').diff(startDate.startOf('day'), 'day') : 0;
 
             const subtotalAmount = selectedCards.reduce((sum, card) => {
                 return sum + (card.price * nights);
@@ -116,6 +120,14 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
         return current && current < dayjs().startOf('day');
     };
 
+    const handleTodayClick = () => {
+        const now = dayjs();
+        setDates([now, dayjs().hour(15).minute(0)]);
+        form.setFieldsValue({
+            rangoFechas: [now, dayjs().hour(15).minute(0)]
+        });
+    };
+
     const handleSubmit = async (values: any) => {
         if (selectedCards.length === 0) {
             message.warning('Por favor selecciona al menos una habitación.');
@@ -132,12 +144,13 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
             return acc;
         }, {} as Record<string, number>);
 
-        const fecha_inicio = dates ? dates[0].format('YYYY-MM-DD') : null;
-        const fecha_fin = dates ? dates[1].format('YYYY-MM-DD') : null;
+        const fecha_inicio = dates ? dates[0].format('YYYY-MM-DD HH:mm') : null;
+        const fecha_fin = dates && dates[1] ? dates[1].format('YYYY-MM-DD HH:mm') : null;
 
         const newValues = { habitaciones, precios, fecha_inicio, fecha_fin, subtotal, total, descuento: discount, personas: personIds };
         if (session?.user?.token?.token) {
             setLoading(true);
+            console.log('newValues:', newValues); 
             try {
                 if(initialVenta){
                     await VentasService.updateVenta(session.user.token.token, idVenta , newValues);
@@ -160,7 +173,19 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
             <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
                 <h2 className="mt-4 mb-2 text-lg">Datos para el ingreso</h2>
                 <Item name="rangoFechas" label="Rango de Fechas" rules={[{ required: true, message: 'Por favor ingrese el rango de fechas' }]} className='w-full'>
-                    <RangePicker size={"middle"} className='w-full' format={formatDate} onChange={handleDateChange} disabledDate={disabledDate} />
+                    <RangePicker 
+                        showTime={{ format: 'HH:mm' }} 
+                        size={"middle"} 
+                        className='w-full' 
+                        format={formatDate as DatePickerProps['format']} 
+                        onChange={handleDateChange} 
+                        disabledDate={disabledDate}
+                        renderExtraFooter={() => (
+                            <Button type="link" onClick={handleTodayClick}>
+                                Hoy
+                            </Button>
+                        )}
+                    />
                 </Item>
 
                 <h2 className="mt-4 mb-2 text-lg">Seleccionar habitaciones</h2>

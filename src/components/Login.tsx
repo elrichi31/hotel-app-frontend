@@ -1,9 +1,9 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Checkbox, Form, Input, message } from 'antd';
+import { Button, Checkbox, Form, Input, message, Spin } from 'antd';
 import type { FormProps } from 'antd';
-import {signIn} from 'next-auth/react'
+import { signIn } from 'next-auth/react';
 
 type FieldType = {
   username: string;
@@ -14,15 +14,18 @@ type FieldType = {
 const Login: React.FC = () => {
   const router = useRouter();
   const [errors, setErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
-    const resposeNextAuth = await signIn('credentials', { 
+    setLoading(true); // Inicia la carga
+    const responseNextAuth = await signIn('credentials', { 
       redirect: false, ...values 
-    })
-    if(resposeNextAuth?.error){
-      setErrors(resposeNextAuth.error.split(','))
+    });
+    if(responseNextAuth?.error){
+      setErrors(responseNextAuth.error.split(','));
       message.error('Login failed');
-      return
+      setLoading(false); // Finaliza la carga en caso de error
+      return;
     }
     message.success('Login successful');
     router.push('/dashboard');
@@ -71,8 +74,9 @@ const Login: React.FC = () => {
               type="primary"
               htmlType="submit"
               className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+              disabled={loading}
             >
-              Submit
+              {loading ? <Spin /> : 'Inicia sesión'}
             </Button>
           </Form.Item>
         </Form>
