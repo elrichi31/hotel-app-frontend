@@ -1,7 +1,7 @@
 'use client'
 import React from 'react';
 import { Card, message, Popconfirm } from 'antd';
-import { EditOutlined, CloseOutlined } from '@ant-design/icons';
+import { EditOutlined, CloseOutlined, DiffOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 
 const VentaDetails = ({ venta, onDelete }: any) => {
@@ -23,6 +23,12 @@ const VentaDetails = ({ venta, onDelete }: any) => {
   const editar = (
     <Link href={`/ventas/${venta.id}`}>
       <EditOutlined />
+    </Link>
+  );
+
+  const factura = (
+    <Link href={`/ventas/facturas/${venta.id}`}>
+      <DiffOutlined />
     </Link>
   );
 
@@ -53,7 +59,7 @@ const VentaDetails = ({ venta, onDelete }: any) => {
   };
 
   return (
-    <Card key={venta.id} title={`Venta #${venta.id}`} className="mb-5 shadow-md" actions={[editar, eliminar]}>
+    <Card key={venta.id} title={`Venta #${venta.id}`} className="mb-5 shadow-md" actions={[editar, factura, eliminar]}>
       <div>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Información de la Venta</h2>

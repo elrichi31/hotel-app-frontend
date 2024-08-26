@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import RoomModal from '@/components/RoomModal';
+import Head from 'next/head';
 
 export default function RoomsPage() {
     const [rooms, setRooms] = useState<Room[]>([]);
@@ -72,6 +73,10 @@ export default function RoomsPage() {
 
     return (
         <div className='flex flex-wrap items-center justify-center'>
+            <head>
+                <title>Habitaciones</title>
+                <meta name="description" content="Página de habitaciones" />
+            </head>
             {rooms.map((room) => (
                 <RoomsCard key={room.numero} room={room} onUpdate={handleUpdateRoom} />
             ))}

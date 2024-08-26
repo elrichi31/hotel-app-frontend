@@ -70,6 +70,10 @@ const Page = () => {
 
     return (
         <div className="container mx-auto p-4">
+            <head>
+                <title>Detalles de las Ventas</title>
+                <meta name="description" content="Página de detalles de las ventas" />
+            </head>
             <h1 className="text-2xl font-bold mb-4">Detalles de las Ventas</h1>
             <h2 className="text-xl font-semibold mt-6 mb-2">Ventas de Hoy</h2>
             {ventasHoy.length === 0 ? (

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Checkbox, Form, Input, message, Spin } from 'antd';
 import type { FormProps } from 'antd';
 import { signIn } from 'next-auth/react';
-
+import { useSession } from 'next-auth/react';
 type FieldType = {
   username: string;
   password: string;
@@ -15,7 +15,11 @@ const Login: React.FC = () => {
   const router = useRouter();
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const { data: session, status } = useSession();
 
+  if (session) {
+    router.push('/dashboard');
+  }
   const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
     setLoading(true); // Inicia la carga
     const responseNextAuth = await signIn('credentials', { 

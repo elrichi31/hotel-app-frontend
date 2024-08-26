@@ -1,10 +1,9 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { Button, message, Steps, theme } from 'antd';
-import RegisterClientView from '@/views/RegisterClientView';
 import CollapseView from '@/views/CollapseView';
+
 export const metadata: Metadata = {
-    title: 'Register new client',
+    title: 'Registro de cliente',
     description: 'Dashboard page',
 }
 

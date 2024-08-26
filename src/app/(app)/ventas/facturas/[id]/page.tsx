@@ -1,7 +1,9 @@
+// app/page.tsx
 "use client";
 import React, { useEffect, useState } from 'react';
 import FacturasService from '@/services/FacturasService';
 import { useSession } from 'next-auth/react';
+import CardFactura from '@/components/FacturaCard';
 
 export default function Page({ params }: any) {
   const { data: session } = useSession();
@@ -10,7 +12,6 @@ export default function Page({ params }: any) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Define una función para cargar las facturas
     const fetchFacturas = async () => {
       try {
         if (session?.user?.token.token) {
@@ -24,7 +25,6 @@ export default function Page({ params }: any) {
       }
     };
 
-    // Llama a la función de carga de facturas
     fetchFacturas();
   }, [params.id, session]);
 
@@ -40,33 +40,11 @@ export default function Page({ params }: any) {
     <div>
       <h1>Facturas para Venta {params.id}</h1>
       {facturas.length > 0 ? (
-        <ul>
+        <div>
           {facturas.map((factura) => (
-            <li key={factura.id}>
-              <p><strong>Factura ID:</strong> {factura.id}</p>
-              <p><strong>Tipo de Documento (Identificación):</strong> {factura.identificacion}</p>
-              <p><strong>Nombre:</strong> {factura.nombre}</p>
-              <p><strong>Apellido:</strong> {factura.apellido}</p>
-              <p><strong>Dirección:</strong> {factura.direccion}</p>
-              <p><strong>Teléfono:</strong> {factura.telefono || 'No proporcionado'}</p>
-              <p><strong>Correo:</strong> {factura.correo}</p>
-              <p><strong>Número de Factura:</strong> {factura.numero_factura}</p>
-              <p><strong>Fecha de Emisión:</strong> {new Date(factura.fecha_emision).toLocaleString()}</p>
-              <p><strong>Descripción:</strong> {factura.descripcion}</p>
-              <p><strong>Cantidad:</strong> {factura.cantidad}</p>
-              <p><strong>Precio Unitario:</strong> ${factura.precio_unitario}</p>
-              <p><strong>Subtotal:</strong> ${factura.subtotal}</p>
-              <p><strong>Descuento:</strong> ${factura.descuento}</p>
-              <p><strong>IVA:</strong> ${factura.iva}</p>
-              <p><strong>Otros Impuestos:</strong> ${factura.otros_impuestos}</p>
-              <p><strong>Total:</strong> ${factura.total}</p>
-              <p><strong>Forma de Pago:</strong> {factura.forma_pago}</p>
-              <p><strong>Observaciones:</strong> {factura.observaciones || 'No hay observaciones'}</p>
-              <p><strong>Venta ID:</strong> {factura.venta_id}</p>
-              <hr />
-            </li>
+            <CardFactura key={factura.id} factura={factura} />
           ))}
-        </ul>
+        </div>
       ) : (
         <p>No hay facturas para esta venta.</p>
       )}
