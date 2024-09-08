@@ -22,8 +22,9 @@ const FacturasService = {
                 },
             });
             return response.data;
-        } catch (error) {
-            throw new Error('Error al obtener las facturas por venta');
+        } catch (error: any) {
+
+            throw new Error(error.message || 'Error al obtener las facturas');
         }
     },
 
@@ -48,8 +49,8 @@ const FacturasService = {
                 },
             });
             return response.data;
-        } catch (error) {
-            throw new Error('Error al crear la factura');
+        } catch (error: any) {
+            throw new Error(error.response.data.message || 'Error al crear la factura');
         }
     },
 
