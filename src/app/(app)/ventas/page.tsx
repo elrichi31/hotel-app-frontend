@@ -7,7 +7,6 @@ import { useSession } from 'next-auth/react';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { EditOutlined, CloseOutlined, DiffOutlined } from '@ant-design/icons';
-import FacturaCard from '@/components/FacturaCard';
 dayjs.extend(isBetween);
 
 const { Option } = Select;
@@ -86,11 +85,6 @@ const Page = () => {
         router.push(`ventas/${venta.id}`);
     };
 
-    const handleViewInvoices = (venta: any) => {
-        setSelectedVenta(venta);
-        setShowModal(true);
-    };
-
     const handleFilter = () => {
         let filtered: any[] = [];
         switch (selectedOption) {
@@ -125,11 +119,6 @@ const Page = () => {
 
     const handleDateRangeChange: any = (dates: [Dayjs, Dayjs] | null) => {
         setDateRange(dates);
-    };
-
-    const handleCloseModal = () => {
-        setShowModal(false);
-        setSelectedVenta(null);
     };
 
     if (loading) {
@@ -224,7 +213,7 @@ const Page = () => {
                             render: (text: any, venta: any) => (
                                 <div className="flex space-x-5">
                                     <EditOutlined className='text-xl' onClick={() => handleEdit(venta)} type="link">Editar</EditOutlined>
-                                    <DiffOutlined className='text-xl' onClick={() => handleViewInvoices(venta)} type="link">Ver Facturas</DiffOutlined>
+                                    <DiffOutlined className='text-xl' onClick={() => router.push(`ventas/facturas/${venta.id}`)} type="link">Ver Facturas</DiffOutlined>
                                     <CloseOutlined className='text-xl' onClick={() => handleDelete(venta.id)} type="link">Eliminar</CloseOutlined>
                                 </div>
                             ),
@@ -232,32 +221,6 @@ const Page = () => {
                     ]}
                     rowKey="id"
                 />
-            )}
-
-            {selectedVenta && (
-                <Modal
-                    title="Facturas"
-                    visible={showModal}
-                    onCancel={handleCloseModal}
-                    footer={null}
-                >
-                    {selectedVenta.facturas.length === 0 ? (
-                        <div>
-                            <p>No hay facturas para esta venta.</p>
-                            <Button onClick={() => { router.push(`/ventas/facturas/${selectedVenta.id}`) }}>Crear factura</Button>
-                        </div>
-                    ) : (
-                        <div>
-                            <ul>
-                                {selectedVenta.facturas.map((factura: any) => (
-                                    <FacturaCard key={factura.id} factura={factura} />
-
-                                ))}
-                            </ul>
-                            <Button onClick={() => { router.push(`/ventas/facturas/${selectedVenta.id}`) }}>Crear factura</Button>
-                        </div>
-                    )}
-                </Modal>
             )}
         </div>
     );

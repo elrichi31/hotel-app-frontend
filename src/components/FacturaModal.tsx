@@ -2,44 +2,65 @@ import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Modal } fr
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs'; // Necesario para el formateo de la fecha
+import { parse } from 'path';
 
 export default function FacturaModal({ open, onCancel, onOk, factura, edit }: any) {
     const { Option } = Select;
     const [form] = Form.useForm();
-    const [subtotal, setSubtotal] = useState<number>(0);
-    const [total, setTotal] = useState<number>(0);
+    const [subtotal, setSubtotal] = useState<number>(0 || parseFloat(factura?.subtotal));
+    const [total, setTotal] = useState<number>(0 || parseFloat(factura?.total));
     const modalTitle = edit ? `Editar Factura ${factura?.id}` : 'Crear Nueva Factura';
 
     const initialValues = {
         productos: factura?.productos || [],
         descuento: factura?.descuento || 0,
-        subtotal: factura?.subtotal || 0,
-        total: factura?.total || 0,
+        subtotal: parseFloat(factura?.subtotal) || 0,
+        total: parseFloat(factura?.total) || 0,
         estado: factura?.estado || 'guardado',
-        fecha_emision: factura?.fecha_emision ? dayjs(factura.fecha_emision) : null, // Formatear la fecha
-        ...factura,
+        fecha_emision: factura?.fecha_emision && dayjs(factura.fecha_emision).isValid()
+            ? dayjs(factura.fecha_emision)
+            : undefined, // Asegurar que sea un objeto dayjs o undefined
+        nombre: factura?.nombre || '',
+        apellido: factura?.apellido || '',
+        identificacion: factura?.identificacion || '',
+        direccion: factura?.direccion || '',
+        telefono: factura?.telefono || '',
+        correo: factura?.correo || '',
+        numero_factura: factura?.numero_factura || '',
+        forma_pago: factura?.forma_pago || '',
     };
-
-    useEffect(() => {
-        const productos = form.getFieldValue('productos') || [];
-        const descuento = form.getFieldValue('descuento') || 0;
-        const { subtotal: subtotalCalc, total: totalCalc } = updateTotals(productos, descuento);
-        setSubtotal(subtotalCalc);
-        setTotal(totalCalc);
-        form.setFieldsValue({ subtotal: subtotalCalc, total: totalCalc });
-    }, [form.getFieldValue('productos'), form.getFieldValue('descuento')]);
 
     const updateTotals = (productos: any[], descuento: number) => {
         const subtotalCalc = productos.reduce((acc: number, item: any) => {
-            if (item && typeof item.cantidad === 'number' && typeof item.precio_unitario === 'number') {
-                return acc + (item.cantidad || 0) * (item.precio_unitario || 0);
+            if (item && typeof item.cantidad === 'number') {
+                return acc + (item.cantidad * parseFloat(item.precio_unitario));
             }
             return acc;
         }, 0);
 
         const totalCalc = subtotalCalc - (descuento || 0);
-        return { subtotal: subtotalCalc, total: totalCalc };
+        return { subtotal: subtotalCalc, total: totalCalc > 0 ? totalCalc : 0 };
     };
+
+    useEffect(() => {
+        if (factura) {
+            form.setFieldsValue({
+                ...factura,
+                fecha_emision: factura.fecha_emision ? dayjs(factura.fecha_emision) : undefined,
+            });
+            
+            setSubtotal(parseFloat(factura.subtotal));
+            setTotal(parseFloat(factura.total));  
+            const productos = factura.productos || [];
+            const descuento = factura.descuento || 0;
+            const { subtotal: subtotalCalc, total: totalCalc } = updateTotals(productos, descuento);
+            
+            setSubtotal(subtotalCalc);
+            setTotal(totalCalc);
+            form.setFieldsValue({ subtotal: subtotalCalc, total: totalCalc });
+        }
+    }, [factura, form]);
+
 
     const handleOk = async () => {
         try {
@@ -68,14 +89,12 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                 className='w-[450px] m-auto my-10'
                 initialValues={initialValues}
                 onValuesChange={(changedValues) => {
-                    if (changedValues.productos || changedValues.descuento !== undefined) {
-                        const productos = form.getFieldValue('productos') || [];
-                        const descuento = form.getFieldValue('descuento') || 0;
-                        const { subtotal, total } = updateTotals(productos, descuento);
-                        setSubtotal(subtotal);
-                        setTotal(total);
-                        form.setFieldsValue({ subtotal, total });
-                    }
+                    const productos = form.getFieldValue('productos') || [];
+                    const descuento = form.getFieldValue('descuento') || 0;
+                    const { subtotal, total } = updateTotals(productos, descuento);
+                    setSubtotal(subtotal);
+                    setTotal(total);
+                    form.setFieldsValue({ subtotal, total });
                 }}
             >
                 {/* Campos del formulario */}

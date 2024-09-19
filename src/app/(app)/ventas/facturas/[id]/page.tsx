@@ -1,4 +1,4 @@
-'use client'
+'use client';
 import React, { useEffect, useState } from 'react';
 import FacturasService from '@/services/FacturasService';
 import { useSession } from 'next-auth/react';
@@ -22,12 +22,13 @@ export default function Page({ params }: any) {
           if (Array.isArray(data)) {
             setFacturas(data);
           } else {
-            setFacturas([]); // Asegúrate de que el estado siempre sea un array
+            setFacturas([]); // Asegura que siempre sea un array
+            setError('Datos de facturas inválidos.');
           }
         }
       } catch (error: any) {
         setError(error.message || 'Unexpected error');
-        setFacturas([]); // También asegúrate de que el estado sea un array en caso de error
+        setFacturas([]); // Asegura que siempre sea un array en caso de error
       } finally {
         setLoading(false);
       }
@@ -58,9 +59,9 @@ export default function Page({ params }: any) {
         const val = { ...values, venta_id: params.id, estado: 'guardado' };
         console.log(val, session.user.token.token);
         const newFactura = await FacturasService.createFactura(session.user.token.token, val);
-        
+
         if (newFactura && typeof newFactura === 'object') {
-          setFacturas((prevFacturas) => [...prevFacturas, newFactura]);
+          setFacturas([...facturas, newFactura]);
           message.success('Factura creada exitosamente');
           setIsModalOpen(false);
         } else {
@@ -77,6 +78,21 @@ export default function Page({ params }: any) {
     }
   };
 
+  // Función para actualizar una factura existente en el estado
+  const updateFactura = (updatedFactura: any) => {
+    setFacturas((prevFacturas) =>
+      prevFacturas.map((factura) =>
+        factura.id === updatedFactura.id ? updatedFactura : factura
+      )
+    );
+  };
+
+  // Función para eliminar una factura del estado
+  const deleteFactura = (facturaId: number) => {
+    setFacturas((prevFacturas) => prevFacturas.filter((factura) => factura.id !== facturaId));
+    message.success('Factura eliminada exitosamente');
+  };
+
   return (
     <div>
       <h1 className='text-lg font-bold'>Facturas para Venta {params.id}</h1>
@@ -84,7 +100,12 @@ export default function Page({ params }: any) {
         <div>
           <div className='flex space-x-5'>
             {facturas.map((factura) => (
-              <CardFactura key={factura.id} factura={factura} />
+              <CardFactura 
+                key={factura.id} 
+                factura={factura} 
+                onUpdate={updateFactura} // Pasa la función de actualización
+                onDelete={deleteFactura} // Pasa la función de eliminación
+              />
             ))}
           </div>
         </div>
@@ -95,7 +116,13 @@ export default function Page({ params }: any) {
         <PlusCircleOutlined style={{ fontSize: "20px" }} className='mx-10' />
         Crear factura
       </Button>
-      <FacturaModal open={isModalOpen} onCancel={handleCancel} onOk={handleOk} factura={null} edit={false} ventaId={params.id} />
-    </div>
+      <FacturaModal 
+        open={isModalOpen} 
+        onCancel={handleCancel} 
+        onOk={handleOk} 
+        factura={null} 
+        edit={false} 
+      />
+    </div >
   );
 }
