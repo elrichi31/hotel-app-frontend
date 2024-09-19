@@ -1,8 +1,9 @@
+// app/page.tsx
 'use client';
 import React, { useEffect, useState } from 'react';
 import FacturasService from '@/services/FacturasService';
 import { useSession } from 'next-auth/react';
-import CardFactura from '@/components/FacturaCard';
+import CardFactura from '@/components/FacturaCard'; // Asegúrate de que la ruta sea correcta
 import { PlusCircleOutlined } from '@ant-design/icons';
 import FacturaModal from '@/components/FacturaModal';
 import { Button, message } from 'antd';
@@ -112,7 +113,10 @@ export default function Page({ params }: any) {
       ) : (
         <p>No hay facturas para esta venta.</p>
       )}
-      <Button className='w-[250px] h-[260px] flex-col m-[16px]' onClick={showModal}>
+      <Button 
+        className='w-[250px] h-[260px] flex-col m-[16px]' 
+        onClick={showModal}
+      >
         <PlusCircleOutlined style={{ fontSize: "20px" }} className='mx-10' />
         Crear factura
       </Button>
@@ -123,6 +127,6 @@ export default function Page({ params }: any) {
         factura={null} 
         edit={false} 
       />
-    </div >
+    </div>
   );
 }

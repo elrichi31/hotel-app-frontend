@@ -1,7 +1,7 @@
 // components/CardFactura.tsx
 import React, { useState } from 'react';
-import { Card, message, Popconfirm, Typography } from 'antd';
-import { CloseOutlined, EditOutlined } from '@ant-design/icons';
+import { Card, message, Popconfirm, Typography, Button } from 'antd';
+import { CloseOutlined, EditOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import FacturaModal from './FacturaModal';
 import FacturasService from '@/services/FacturasService';
@@ -42,6 +42,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
       if (session?.user?.token?.token) {
         await FacturasService.deleteFactura(session.user.token.token, factura.id);
         onDelete(factura.id); // Actualiza el estado en el componente padre
+        message.success('Factura eliminada exitosamente');
       }
     } catch (error: any) {
       console.error('Error deleting factura:', error);
@@ -49,6 +50,25 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
         message.error(error.response.data.message);
       } else {
         message.error('Error al eliminar la factura');
+      }
+    }
+  };
+
+  // Función para manejar la emisión de la factura
+  const handleEmitir = async () => {
+    try {
+      if (session?.user?.token?.token) {
+        const updatedFactura = { ...factura, estado: 'emitido' };
+        const response = await FacturasService.updateFactura(session.user.token.token, factura.id, updatedFactura);
+        onUpdate(response); // Actualiza el estado en el componente padre
+        message.success('Factura emitida exitosamente');
+      }
+    } catch (error: any) {
+      console.error('Error emitiendo factura:', error);
+      if (error.response && error.response.data && error.response.data.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Error al emitir la factura');
       }
     }
   };
@@ -77,27 +97,59 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
     }
   }
 
-  const eliminar = (
-    <Popconfirm 
-      title="¿Estás seguro de eliminar esta factura?" 
-      okText="Sí" 
-      cancelText="No" 
+  // Condicionalmente incluir el botón de eliminar y emitir
+  const eliminar = factura.estado !== 'emitido' && (
+    <Popconfirm
+      title="¿Estás seguro de eliminar esta factura?"
+      okText="Sí"
+      cancelText="No"
       onConfirm={handleDelete}
     >
-      <CloseOutlined style={{ color: 'red' }} />
+      <Button
+      icon={<CloseOutlined />}
+      type="link"
+      style={{color: 'red'}} 
+      
+      >
+        Eliminar
+      </Button>
     </Popconfirm>
   );
 
-  const editar = (
-    <EditOutlined onClick={showModal} style={{ color: 'blue' }} />
+  const emitir = factura.estado !== 'emitido' && (
+    <Button
+      type="link"
+      icon={<PrinterOutlined />}
+      onClick={handleEmitir}
+      style={{ color: 'green', padding: 0 }}
+    >
+      Emitir Factura
+    </Button>
   );
+
+  const editar = factura.estado !== 'emitido' && (
+    <Button
+      type='link'
+      icon={<EditOutlined />}
+      onClick={showModal}
+      style={{ color: 'blue' }}>
+      Editar
+    </Button>
+  );
+
+  // Definir el array de acciones condicionalmente
+  const actions = [
+    editar,
+    eliminar,
+    emitir,
+  ].filter(Boolean); // Eliminar valores falsy
 
   return (
     <div>
       <Card
         title={`Factura ID: ${factura.id}`}
         style={{ width: '100%', marginBottom: '16px' }}
-        actions={[editar, eliminar]}
+        actions={actions}
       >
         <Title level={4}>Detalles de la Factura</Title>
         <Text><strong>Tipo de Documento (Identificación):</strong> {factura.identificacion}</Text>
@@ -131,7 +183,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleOk}
-        factura={factura} 
+        factura={factura}
         edit={true}
       />
     </div>

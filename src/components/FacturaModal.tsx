@@ -1,21 +1,21 @@
+// components/FacturaModal.tsx
+'use client'
 import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Modal } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import React, { useEffect, useState } from 'react';
-import dayjs from 'dayjs'; // Necesario para el formateo de la fecha
-import { parse } from 'path';
+import dayjs from 'dayjs';
 
 export default function FacturaModal({ open, onCancel, onOk, factura, edit }: any) {
     const { Option } = Select;
     const [form] = Form.useForm();
-    const [subtotal, setSubtotal] = useState<number>(0 || parseFloat(factura?.subtotal));
-    const [total, setTotal] = useState<number>(0 || parseFloat(factura?.total));
+    const [subtotal, setSubtotal] = useState<number>(0);
+    const [total, setTotal] = useState<number>(0);
     const modalTitle = edit ? `Editar Factura ${factura?.id}` : 'Crear Nueva Factura';
 
+    // Definir initialValues sin propagar '...factura' para evitar sobrescribir campos
     const initialValues = {
         productos: factura?.productos || [],
         descuento: factura?.descuento || 0,
-        subtotal: parseFloat(factura?.subtotal) || 0,
-        total: parseFloat(factura?.total) || 0,
         estado: factura?.estado || 'guardado',
         fecha_emision: factura?.fecha_emision && dayjs(factura.fecha_emision).isValid()
             ? dayjs(factura.fecha_emision)
@@ -27,13 +27,15 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
         telefono: factura?.telefono || '',
         correo: factura?.correo || '',
         numero_factura: factura?.numero_factura || '',
+        observaciones: factura?.observaciones || '',
         forma_pago: factura?.forma_pago || '',
     };
 
+    // Función para calcular subtotal y total
     const updateTotals = (productos: any[], descuento: number) => {
         const subtotalCalc = productos.reduce((acc: number, item: any) => {
-            if (item && typeof item.cantidad === 'number') {
-                return acc + (item.cantidad * parseFloat(item.precio_unitario));
+            if (item && typeof item.cantidad === 'number' && typeof item.precio_unitario === 'number') {
+                return acc + (item.cantidad || 0) * (item.precio_unitario || 0);
             }
             return acc;
         }, 0);
@@ -43,32 +45,42 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
     };
 
     useEffect(() => {
-        if (factura) {
-            form.setFieldsValue({
-                ...factura,
-                fecha_emision: factura.fecha_emision ? dayjs(factura.fecha_emision) : undefined,
-            });
-            
-            setSubtotal(parseFloat(factura.subtotal));
-            setTotal(parseFloat(factura.total));  
-            const productos = factura.productos || [];
-            const descuento = factura.descuento || 0;
-            const { subtotal: subtotalCalc, total: totalCalc } = updateTotals(productos, descuento);
-            
+        if (open) { // Asegurar que se ejecuta al abrir el modal
+            form.resetFields(); // Resetear campos al abrir el modal
+            form.setFieldsValue(initialValues); // Establecer valores iniciales
+
+            // Calcular y establecer subtotal y total
+            const { subtotal: subtotalCalc, total: totalCalc } = updateTotals(initialValues.productos, initialValues.descuento);
             setSubtotal(subtotalCalc);
             setTotal(totalCalc);
             form.setFieldsValue({ subtotal: subtotalCalc, total: totalCalc });
         }
-    }, [factura, form]);
+    }, [factura, form, open]);
 
+    // Manejar cambios en el formulario para recalcular subtotal y total
+    const handleValuesChange = (changedValues: any, allValues: any) => {
+        if (changedValues.productos || changedValues.descuento !== undefined) {
+            const productos = allValues.productos || [];
+            const descuento = allValues.descuento || 0;
+            const { subtotal: subtotalCalc, total: totalCalc } = updateTotals(productos, descuento);
+            setSubtotal(subtotalCalc);
+            setTotal(totalCalc);
+            form.setFieldsValue({ subtotal: subtotalCalc, total: totalCalc });
+        }
+    };
 
+    // Manejar la confirmación del modal
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
             // Formatear la fecha de emisión a YYYY-MM-DD
-            const fecha_emision = values.fecha_emision ? values.fecha_emision.format('YYYY-MM-DD') : null;
+            const fecha_emision = values.fecha_emision
+                ? values.fecha_emision.format('YYYY-MM-DD')
+                : null;
             onOk({ ...values, fecha_emision }); // Incluir la fecha formateada
-            form.resetFields();
+            form.resetFields(); // Resetear el formulario
+            setSubtotal(0); // Resetear subtotal
+            setTotal(0); // Resetear total
         } catch (errorInfo) {
             console.log('Validation Failed:', errorInfo);
         }
@@ -88,14 +100,7 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                 layout='vertical'
                 className='w-[450px] m-auto my-10'
                 initialValues={initialValues}
-                onValuesChange={(changedValues) => {
-                    const productos = form.getFieldValue('productos') || [];
-                    const descuento = form.getFieldValue('descuento') || 0;
-                    const { subtotal, total } = updateTotals(productos, descuento);
-                    setSubtotal(subtotal);
-                    setTotal(total);
-                    form.setFieldsValue({ subtotal, total });
-                }}
+                onValuesChange={handleValuesChange}
             >
                 {/* Campos del formulario */}
                 <div className='flex space-x-5'>
@@ -161,7 +166,11 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                         name='fecha_emision'
                         rules={[{ required: true, message: 'Por favor seleccione la fecha de emisión' }]}
                     >
-                        <DatePicker className='w-full' placeholder='Seleccione la fecha' />
+                        <DatePicker
+                            className='w-full'
+                            format='YYYY-MM-DD'
+                            placeholder='Seleccione la fecha'
+                        />
                     </Form.Item>
                 </div>
                 <div className='w-full'>
@@ -178,8 +187,8 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                         {(fields, { add, remove }) => (
                             <>
                                 {fields.map(({ key, name, ...restField }) => (
-                                    <Space key={key}>
-                                        <div className='flex mb-5'>
+                                    <Space key={key} align="baseline" className='w-full'>
+                                        <div className='flex mb-5 space-x-2 w-full'>
                                             <Form.Item
                                                 {...restField}
                                                 name={[name, 'cantidad']}
@@ -188,19 +197,18 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                                                 rules={[{ required: true, message: 'Por favor ingresa la cantidad' }]}
                                                 className='m-auto'
                                             >
-                                                <InputNumber min={1} placeholder="Cantidad" className='w-[90%]' />
+                                                <InputNumber min={1} placeholder="Cantidad" className='w-full' />
                                             </Form.Item>
                                             <Form.Item
                                                 {...restField}
                                                 name={[name, 'descripcion']}
                                                 label="Descripción"
                                                 layout='vertical'
-                                                rules={[{ required: true, message: 'Por favor ingresa la descripcion' }]}
+                                                rules={[{ required: true, message: 'Por favor ingresa la descripción' }]}
                                                 className='m-auto'
                                             >
-                                                <Input min={0} placeholder="Descripcion" className='w-[90%]' />
+                                                <Input placeholder="Descripción" className='w-full' />
                                             </Form.Item>
-
                                             <Form.Item
                                                 {...restField}
                                                 name={[name, 'precio_unitario']}
@@ -209,14 +217,19 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                                                 rules={[{ required: true, message: 'Por favor ingresa el precio unitario' }]}
                                                 className='m-auto'
                                             >
-                                                <InputNumber min={0} placeholder="Precio unitario" className='w-[90%]' />
+                                                <InputNumber min={0} placeholder="Precio unitario" className='w-full' />
                                             </Form.Item>
-                                            <MinusCircleOutlined onClick={() => remove(name)} />
+                                            <MinusCircleOutlined onClick={() => remove(name)} className='self-center text-red-500' />
                                         </div>
                                     </Space>
                                 ))}
                                 <Form.Item>
-                                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                                    <Button
+                                        type="dashed"
+                                        onClick={() => add()}
+                                        block
+                                        icon={<PlusOutlined />}
+                                    >
                                         Agregar Producto
                                     </Button>
                                 </Form.Item>
@@ -237,6 +250,15 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                         </Select>
                     </Form.Item>
                 </div>
+                <div>
+                    <Form.Item
+                        label="Observaciones"
+                        name="observaciones"
+                        rules={[{ required: false }]}
+                    >
+                        <Input.TextArea rows={2} />
+                    </Form.Item>
+                </div>
                 <Form.Item
                     label='Descuento'
                     name='descuento'
@@ -247,16 +269,16 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                 </Form.Item>
                 {/* Campos ocultos para subtotal y total */}
                 <Form.Item name='subtotal' hidden>
-                    <Input value={subtotal} />
+                    <InputNumber />
                 </Form.Item>
                 <Form.Item name='total' hidden>
-                    <Input value={total} />
+                    <InputNumber />
                 </Form.Item>
-                <div>
+                <div className='mt-4'>
                     <p>Subtotal: ${subtotal.toFixed(2)}</p>
                     <p>Total: ${total.toFixed(2)}</p>
                 </div>
             </Form>
         </Modal>
-    );
+    )
 }
