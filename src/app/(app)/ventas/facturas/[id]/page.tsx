@@ -1,9 +1,8 @@
-// app/page.tsx
 'use client';
 import React, { useEffect, useState } from 'react';
 import FacturasService from '@/services/FacturasService';
 import { useSession } from 'next-auth/react';
-import CardFactura from '@/components/FacturaCard'; // Asegúrate de que la ruta sea correcta
+import CardFactura from '@/components/FacturaCard';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import FacturaModal from '@/components/FacturaModal';
 import { Button, message } from 'antd';
@@ -23,13 +22,13 @@ export default function Page({ params }: any) {
           if (Array.isArray(data)) {
             setFacturas(data);
           } else {
-            setFacturas([]); // Asegura que siempre sea un array
+            setFacturas([]);
             setError('Datos de facturas inválidos.');
           }
         }
       } catch (error: any) {
         setError(error.message || 'Unexpected error');
-        setFacturas([]); // Asegura que siempre sea un array en caso de error
+        setFacturas([]); 
       } finally {
         setLoading(false);
       }

@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import VentasService from '@/services/VentasService';
-import { Spin, Alert, message, Empty, Table, Button, Select, DatePicker, Modal } from 'antd';
+import { Spin, Alert, message, Empty, Table, Button, Select, DatePicker, Input, Popconfirm } from 'antd';
 import { useSession } from 'next-auth/react';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { EditOutlined, CloseOutlined, DiffOutlined } from '@ant-design/icons';
+import { EditOutlined, CloseOutlined, DiffOutlined, SearchOutlined } from '@ant-design/icons';
 dayjs.extend(isBetween);
 
 const { Option } = Select;
@@ -25,8 +25,7 @@ const Page = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedOption, setSelectedOption] = useState<string>('todas');
     const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-    const [selectedVenta, setSelectedVenta] = useState<any>(null);
-    const [showModal, setShowModal] = useState(false);
+    const [searchText, setSearchText] = useState<string>(''); // Nuevo estado para el texto de búsqueda
 
     useEffect(() => {
         if (session?.user?.token?.token) {
@@ -64,6 +63,22 @@ const Page = () => {
             fetchVentas();
         }
     }, [session]);
+
+    // Función para manejar la búsqueda global
+    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.toLowerCase();
+        setSearchText(value);
+
+        const filtered = ventasTotales.filter((venta) =>
+            venta.id.toString().includes(value) ||
+            venta.personas[0]?.nombre.toLowerCase().includes(value) ||
+            venta.personas[0]?.apellido.toLowerCase().includes(value) ||
+            venta.subtotal.toString().includes(value) ||
+            venta.total.toString().includes(value)
+        );
+
+        setFilteredVentas(filtered);
+    };
 
     const handleDelete = async (ventaId: number) => {
         try {
@@ -133,27 +148,36 @@ const Page = () => {
         <div className="container mx-auto p-4">
             <h1 className="text-2xl font-bold mb-4">Detalles de las Ventas</h1>
 
-            <div className="mb-4 flex items-center">
-                <Select
-                    value={selectedOption}
-                    onChange={setSelectedOption}
-                    style={{ width: 200, marginRight: 10 }}
-                >
-                    <Option value="hoy">Hoy</Option>
-                    <Option value="ayer">Ayer</Option>
-                    <Option value="7dias">Últimos 7 Días</Option>
-                    <Option value="mes">Último Mes</Option>
-                    <Option value="todas">Todas</Option>
-                </Select>
-                <RangePicker
-                    format="DD/MM/YYYY"
-                    onChange={handleDateRangeChange}
-                    style={{ marginRight: 10 }}
+            <div className="mb-4 flex justify-between items-center">
+                <div className="flex items-center">
+                    <Select
+                        value={selectedOption}
+                        onChange={setSelectedOption}
+                        style={{ width: 200, marginRight: 10 }}
+                    >
+                        <Option value="hoy">Hoy</Option>
+                        <Option value="ayer">Ayer</Option>
+                        <Option value="7dias">Últimos 7 Días</Option>
+                        <Option value="mes">Último Mes</Option>
+                        <Option value="todas">Todas</Option>
+                    </Select>
+                    <RangePicker
+                        format="DD/MM/YYYY"
+                        onChange={handleDateRangeChange}
+                        style={{ marginRight: 10 }}
+                    />
+                    <Button onClick={handleFilter} type="primary">Aplicar Filtro</Button>
+                </div>
+                {/* Búsqueda Global */}
+                <Input
+                    placeholder="Buscar..."
+                    prefix={<SearchOutlined />}
+                    value={searchText}
+                    onChange={handleSearch}
+                    style={{ width: 300 }}
                 />
-                <Button onClick={handleFilter} type="primary">Aplicar Filtro</Button>
             </div>
 
-            <h2 className="text-xl font-semibold mt-6 mb-2">Ventas</h2>
             {filteredVentas.length === 0 ? (
                 <div className="flex justify-center items-center h-64">
                     <Empty description="No existen ventas" />
@@ -214,7 +238,15 @@ const Page = () => {
                                 <div className="flex space-x-5">
                                     <EditOutlined className='text-xl' onClick={() => handleEdit(venta)} type="link">Editar</EditOutlined>
                                     <DiffOutlined className='text-xl' onClick={() => router.push(`ventas/facturas/${venta.id}`)} type="link">Ver Facturas</DiffOutlined>
-                                    <CloseOutlined className='text-xl' onClick={() => handleDelete(venta.id)} type="link">Eliminar</CloseOutlined>
+                                    <Popconfirm
+                                        title="¿Estás seguro de eliminar esta venta?"
+                                        onConfirm={() => handleDelete(venta.id)}
+                                        okText="Sí"
+                                        cancelText="No"
+                                        placement='left'
+                                    >
+                                        <CloseOutlined className='text-xl' type="link" style={{ color: 'red', cursor: 'pointer' }}>Eliminar</CloseOutlined>
+                                    </Popconfirm>
                                 </div>
                             ),
                         },

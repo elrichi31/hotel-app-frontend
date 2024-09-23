@@ -1,4 +1,3 @@
-// components/CardFactura.tsx
 import React, { useState } from 'react';
 import { Card, message, Popconfirm, Typography, Button } from 'antd';
 import { CloseOutlined, EditOutlined, PrinterOutlined } from '@ant-design/icons';
@@ -45,7 +44,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
         message.success('Factura eliminada exitosamente');
       }
     } catch (error: any) {
-      console.error('Error deleting factura:', error);
+      console.error('Error eliminando la factura:', error);
       if (error.response && error.response.data && error.response.data.message) {
         message.error(error.response.data.message);
       } else {
@@ -64,7 +63,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
         message.success('Factura emitida exitosamente');
       }
     } catch (error: any) {
-      console.error('Error emitiendo factura:', error);
+      console.error('Error emitiendo la factura:', error);
       if (error.response && error.response.data && error.response.data.message) {
         message.error(error.response.data.message);
       } else {
@@ -73,10 +72,29 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
     }
   };
 
+  // Función para manejar la anulación de la factura
+  const handleAnular = async () => {
+    try {
+      if (session?.user?.token?.token) {
+        const updatedFactura = { ...factura, estado: 'anulado' };
+        const response = await FacturasService.updateFactura(session.user.token.token, factura.id, updatedFactura);
+        onUpdate(response); // Actualiza el estado en el componente padre
+        message.success('Factura anulada exitosamente');
+      }
+    } catch (error: any) {
+      console.error('Error al anular la factura:', error);
+      if (error.response && error.response.data && error.response.data.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Error al anular la factura');
+      }
+    }
+  };
+
   // Función para manejar la apertura del modal de edición
   const showModal = () => {
     setIsModalOpen(true);
-  }
+  };
 
   // Función para manejar la confirmación de edición
   const handleOk = async (values: any) => {
@@ -88,35 +106,18 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
         onUpdate(updatedFactura); // Actualiza el estado en el componente padre
       }
     } catch (error: any) {
-      console.error('Error updating factura:', error);
+      console.error('Error actualizando la factura:', error);
       if (error.response && error.response.data && error.response.data.message) {
         message.error(error.response.data.message);
       } else {
         message.error('Error al actualizar la factura');
       }
     }
-  }
+  };
 
-  // Condicionalmente incluir el botón de eliminar y emitir
-  const eliminar = factura.estado !== 'emitido' && (
-    <Popconfirm
-      title="¿Estás seguro de eliminar esta factura?"
-      okText="Sí"
-      cancelText="No"
-      onConfirm={handleDelete}
-    >
-      <Button
-      icon={<CloseOutlined />}
-      type="link"
-      style={{color: 'red'}} 
-      
-      >
-        Eliminar
-      </Button>
-    </Popconfirm>
-  );
+  // Condicionalmente incluir los botones de eliminar, emitir y anular
 
-  const emitir = factura.estado !== 'emitido' && (
+  const emitir = factura.estado == 'guardado' && (
     <Button
       type="link"
       icon={<PrinterOutlined />}
@@ -127,7 +128,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
     </Button>
   );
 
-  const editar = factura.estado !== 'emitido' && (
+  const editar = factura.estado == 'guardado' && (
     <Button
       type='link'
       icon={<EditOutlined />}
@@ -137,11 +138,28 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
     </Button>
   );
 
+  const anular = factura.estado === 'emitido' && (
+    <Popconfirm
+      title="¿Estás seguro de anular esta factura?"
+      okText="Sí"
+      cancelText="No"
+      onConfirm={handleAnular}
+    >
+      <Button
+        icon={<CloseOutlined />}
+        type="link"
+        style={{ color: 'orange' }}
+      >
+        Anular
+      </Button>
+    </Popconfirm>
+  );
+
   // Definir el array de acciones condicionalmente
   const actions = [
     editar,
-    eliminar,
     emitir,
+    anular,
   ].filter(Boolean); // Eliminar valores falsy
 
   return (
