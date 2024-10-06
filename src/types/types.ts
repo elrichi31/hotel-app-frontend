@@ -25,3 +25,15 @@ export interface Client {
     ciudadania: string;
     procedencia: string
 }
+
+export interface ReservaData {
+    nombre: string;
+    apellido: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+    habitaciones: string[];
+    precios: Record<string, number>;
+    numero_personas: number;
+    total: number;
+    estado: string;
+  }

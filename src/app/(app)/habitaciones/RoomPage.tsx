@@ -31,7 +31,7 @@ export default function RoomsPage() {
     const handleOk = async (values: any) => {
         try {
             if (session?.user?.token?.token) {
-                const parsedValues = {...values, fechaInicioOcupacion: null, fechaFinOcupacion: null}
+                const parsedValues = { ...values, fechaInicioOcupacion: null, fechaFinOcupacion: null }
                 console.log(parsedValues)
                 const newRoom = await RoomService.createRoom(parsedValues, session.user.token.token);
                 message.success('Habitación creada exitosamente');
@@ -75,11 +75,12 @@ export default function RoomsPage() {
                 <RoomsCard key={room.numero} room={room} onUpdate={handleUpdateRoom} />
             ))}
             <div className='flex items-center justify-center'>
-                <Button className='w-[250px] h-[260px] flex-col m-[16px]' onClick={showModal}>
-                    <PlusCircleOutlined style={{fontSize: "20px"}} className='mx-10'/>
+                <Button className='flex-col m-[16px]' onClick={showModal} style={{ height: '250px', width: '250px' }}>
+                    <PlusCircleOutlined style={{ fontSize: "20px" }} className='mx-10' />
                     Crear habitación
                 </Button>
-                <RoomModal open={isModalOpen} onCancel={handleCancel} onOk={handleOk} room={null} edit={false}/>
+
+                <RoomModal open={isModalOpen} onCancel={handleCancel} onOk={handleOk} room={null} edit={false} />
             </div>
         </div>
     );

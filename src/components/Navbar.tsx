@@ -26,6 +26,7 @@ const nav: MenuItem[] = [
   { key: '/habitaciones', icon: <ContainerOutlined />, label: (<a href='/habitaciones'>Habitaciones</a>)  },
   { key: '/ventas', icon: <ContainerOutlined />, label: (<a href='/ventas'>Ventas</a>)  },
   { key: '/ventas/facturas', icon: <ContainerOutlined />, label: (<a href='/ventas/facturas'>Facturas</a>)  },
+  { key: '/reservas', icon : <ContainerOutlined />, label: (<a href='/reservas'>Reservas</a>) },
   {
     key: 'sub2',
     label: 'Navigation Two',

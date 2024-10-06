@@ -62,6 +62,21 @@ const RoomService = {
             throw new Error('Error al eliminar la habitación');
         }
     },
+    async getAvailableRooms(fecha_inicio: string, fecha_fin: string): Promise<any> {
+        try {
+            const response = await axios.post(
+                `/reservas/disponible`,
+                {
+                    fecha_inicio,
+                    fecha_fin,
+                },
+            
+            );
+            return response.data;
+        } catch (error) {
+            throw new Error('Error fetching available rooms');
+        }
+    }
 };
 
 export default RoomService;

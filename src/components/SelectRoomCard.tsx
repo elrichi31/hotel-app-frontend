@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 
 const { Option } = Select;
 
-const SelectRoomCard = ({ room, onSelect, isSelected, precios }: any) => {
-    const [selectedPrice, setSelectedPrice] = useState(room.precios[0]?.precio);
-    const [selectedPriceId, setSelectedPriceId] = useState(room.precios[0]?.id);
+const SelectRoomCard = ({ room, onSelect, isSelected, precios, noTags }: any) => {
+    const [selectedPrice, setSelectedPrice] = useState(room.precios && room.precios.length > 0 ? room.precios[0].precio : null);
+    const [selectedPriceId, setSelectedPriceId] = useState(room.precios && room.precios.length > 0 ? room.precios[0].id : null);
+
+
 
     useEffect(() => {
         if (isSelected) {
@@ -49,7 +51,7 @@ const SelectRoomCard = ({ room, onSelect, isSelected, precios }: any) => {
                 <div className='flex justify-between'>
                     <h3 className="text-lg font-semibold">Habitación {room.numero}</h3>
                     {
-                        precios ? null :
+                        precios || noTags ? null :
                             <div>
                                 {room.estado === 'Libre' ? (<Tag color="green">Libre</Tag>) : (<Tag color="orange">Ocupado</Tag>)}
                             </div>
