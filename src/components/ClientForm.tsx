@@ -268,15 +268,6 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
                     </div>
                 )}
             </Form.List>
-
-            <div>
-                <h3 className='mt-4'>IDs de Clientes Validados/Registrados:</h3>
-                <ul>
-                    {clientIds.map((id) => (
-                        <li key={id}>{id}</li>
-                    ))}
-                </ul>
-            </div>
         </Form>
     );
 };

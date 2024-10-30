@@ -1,10 +1,10 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Checkbox, Form, Input, message, Spin } from 'antd';
 import type { FormProps } from 'antd';
-import { signIn } from 'next-auth/react';
-import { useSession } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
+
 type FieldType = {
   username: string;
   password: string;
@@ -13,25 +13,30 @@ type FieldType = {
 
 const Login: React.FC = () => {
   const router = useRouter();
-  const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { data: session, status } = useSession();
 
-  if (session) {
-    router.push('/dashboard');
-  }
+  // Redirigir al usuario si ya está autenticado
+  useEffect(() => {
+    if (session) {
+      router.push('/dashboard');
+    }
+  }, [session, router]);
+
   const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
     setLoading(true); // Inicia la carga
-    const responseNextAuth = await signIn('credentials', { 
-      redirect: false, ...values 
+    const responseNextAuth = await signIn('credentials', {
+      redirect: false,
+      ...values,
     });
-    if(responseNextAuth?.error){
-      setErrors(responseNextAuth.error.split(','));
-      message.error('Login failed');
+
+    if (responseNextAuth?.error) {
+      message.error(`Inicio de sesión fallido: ${responseNextAuth.error}`);
       setLoading(false); // Finaliza la carga en caso de error
       return;
     }
-    message.success('Login successful');
+
+    message.success('Inicio de sesión exitoso');
     router.push('/dashboard');
   };
 
@@ -54,7 +59,7 @@ const Login: React.FC = () => {
           <Form.Item
             label="Username"
             name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            rules={[{ required: true, message: 'Ingrese su nombre de usuario!' }]}
             className="mb-4"
           >
             <Input className="border rounded py-2 px-4 w-full" />
@@ -63,15 +68,15 @@ const Login: React.FC = () => {
           <Form.Item
             label="Password"
             name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
+            rules={[{ required: true, message: 'Ingrese su contraseña' }]}
             className="mb-4"
           >
             <Input.Password className="border rounded py-2 px-4 w-full" />
           </Form.Item>
 
-          <Form.Item name="remember" valuePropName="checked" className="mb-4">
-            <Checkbox>Remember me</Checkbox>
-          </Form.Item>
+          <a href="/request-reset" className="block text-blue-500 text-sm mb-4">
+            Olvidaste tu contraseña
+          </a>
 
           <Form.Item className="mb-0 text-center">
             <Button

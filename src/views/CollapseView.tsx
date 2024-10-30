@@ -43,15 +43,6 @@ const CollapseView = () => {
                     },
                 ]}
             />
-            <div>
-                <h3 className='mt-4'>IDs de Clientes Validados/Registrados:</h3>
-                <ul>
-                    {clientIds.map((id) => (
-                        <li key={id}>{id}</li>
-                    ))}
-                </ul>
-                <pre>{JSON.stringify(venta, null, 2)}</pre>
-            </div>
         </Space>
     );
 };

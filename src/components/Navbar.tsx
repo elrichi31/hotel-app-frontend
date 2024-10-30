@@ -10,6 +10,10 @@ import {
   PieChartOutlined,
   UserOutlined,
   LogoutOutlined,
+  TeamOutlined,
+  ShopOutlined,
+  FileTextOutlined,
+  ScheduleOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Button, Menu, Avatar, Layout, Drawer, Space, Dropdown } from 'antd';
@@ -20,31 +24,16 @@ const { Sider, Content, Header } = Layout;
 
 type MenuItem = Required<MenuProps>['items'][number];
 
-const nav: MenuItem[] = [
-  { key: '/dashboard', icon: <PieChartOutlined />, label: (<a href='/dashboard'>Dashboard</a>) },
-  { key: '/nueva-venta', icon: <DesktopOutlined />, label: (<a href='/nueva-venta'>Nueva Venta</a>) },
-  { key: '/habitaciones', icon: <ContainerOutlined />, label: (<a href='/habitaciones'>Habitaciones</a>)  },
-  { key: '/ventas', icon: <ContainerOutlined />, label: (<a href='/ventas'>Ventas</a>)  },
-  { key: '/ventas/facturas', icon: <ContainerOutlined />, label: (<a href='/ventas/facturas'>Facturas</a>)  },
-  { key: '/reservas', icon : <ContainerOutlined />, label: (<a href='/reservas'>Reservas</a>) },
-  {
-    key: 'sub2',
-    label: 'Navigation Two',
-    icon: <AppstoreOutlined />,
-    children: [
-      { key: '9', label: 'Option 9' },
-      { key: '10', label: 'Option 10' },
-      {
-        key: 'sub3',
-        label: 'Submenu',
-        children: [
-          { key: '11', label: 'Option 11' },
-          { key: '12', label: 'Option 12' },
-        ],
-      },
-    ],
-  },
-];
+// Diccionario de iconos basados en el nombre de la ruta
+const icons: Record<string, ReactNode> = {
+  '/dashboard': <PieChartOutlined />,
+  '/nueva-venta': <ShopOutlined />,
+  '/habitaciones': <DesktopOutlined />,
+  '/ventas': <ContainerOutlined />,
+  '/ventas/facturas': <FileTextOutlined />,
+  '/reservas': <ScheduleOutlined />,
+  '/usuarios': <TeamOutlined />,
+};
 
 const App = ({ children, user, logout }: any) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -65,6 +54,20 @@ const App = ({ children, user, logout }: any) => {
   };
 
   const isMobile = useMediaQuery({ query: '(max-width: 768px)' });
+
+  // Filtrar las rutas del menú según el rol del usuario
+  const filteredNav: MenuItem[] = [
+    { key: '/dashboard', icon: icons['/dashboard'], label: (<a href='/dashboard'>Dashboard</a>) },
+    { key: '/nueva-venta', icon: icons['/nueva-venta'], label: (<a href='/nueva-venta'>Nueva Venta</a>) },
+    { key: '/habitaciones', icon: icons['/habitaciones'], label: (<a href='/habitaciones'>Habitaciones</a>) },
+    { key: '/ventas', icon: icons['/ventas'], label: (<a href='/ventas'>Ventas</a>) },
+    { key: '/ventas/facturas', icon: icons['/ventas/facturas'], label: (<a href='/ventas/facturas'>Facturas</a>) },
+    { key: '/reservas', icon: icons['/reservas'], label: (<a href='/reservas'>Reservas</a>) },
+    // Solo mostrar la ruta de "Usuarios" si el usuario tiene el rol "admin"
+    ...(user?.role === 'admin' ? [
+      { key: '/usuarios', icon: icons['/usuarios'], label: (<a href='/usuarios'>Usuarios</a>) }
+    ] : []),
+  ];
 
   const items: MenuProps['items'] = [
     {
@@ -105,7 +108,7 @@ const App = ({ children, user, logout }: any) => {
               selectedKeys={[selectedKey]}
               defaultOpenKeys={['sub1']}
               mode="inline"
-              items={nav}
+              items={filteredNav}
               theme="light"
             />
           </Drawer>
@@ -143,7 +146,7 @@ const App = ({ children, user, logout }: any) => {
               selectedKeys={[selectedKey]}
               defaultOpenKeys={['sub1']}
               mode="inline"
-              items={nav}
+              items={filteredNav}
               theme="light"
               style={{ flex: 1 }}
             />

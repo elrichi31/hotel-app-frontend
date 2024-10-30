@@ -39,6 +39,7 @@ const Layout = ({ children }: LayoutProps) => {
             if (session?.user?.token?.token) {
                 const token = session.user.token.token;
                 console.log(token);
+                signOut();
                 const response = await axios.post('/logout', {}, {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -46,7 +47,6 @@ const Layout = ({ children }: LayoutProps) => {
                 });
                 console.log('Logout response:', response.data);
                 message.success('Logged out successfully');
-                signOut();
             } else {
                 console.log('No token found for logout');
             }
