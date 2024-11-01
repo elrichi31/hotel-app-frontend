@@ -15,14 +15,16 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const queryToken = searchParams.get('token');
-    if (queryToken) {
-      setToken(queryToken);
-    } else {
-      message.error('Token inválido o no proporcionado.');
-      router.push('/request-reset');
+    if (typeof window !== 'undefined') {
+      const queryToken = searchParams.get('token');
+      if (queryToken) {
+        setToken(queryToken);
+      } else {
+        message.error('Token inválido o no proporcionado.');
+        router.push('/request-reset');
+      }
     }
-  }, [searchParams, router]);
+  }, [searchParams, router]);  
 
   const handleResetPassword = async () => {
     if (!token) {
