@@ -2,15 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, message, Alert, Select } from 'antd';
 import ClientService from '@/services/ClientService';
-import { useSession } from 'next-auth/react';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Client } from '@/types/types';
 
 const { Item } = Form;
 const { Option } = Select;
 
-const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
-    const { data: session } = useSession();
+const ClientForm = ({ personas, updateClientIds, handlePanelChange, token }: any) => {
     const [form] = Form.useForm();
     const [errors, setErrors] = useState<any>();
     const [loading, setLoading] = useState(false);
@@ -49,18 +47,18 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
 
     const onFinish = async (index: number) => {
         try {
-            if (session?.user?.token?.token) {
+            if (token) {
                 const clientsData = form.getFieldsValue();
                 const data: Client = clientsData.users[index];
                 const parsedClients = {
                     personas: [data]
                 };
                 if (validatedClients[data.id] || personas) {
-                    const res = await ClientService.updateClient(data.id as number, data, session.user.token.token);
+                    const res = await ClientService.updateClient(data.id as number, data, token);
                     console.log('Cliente actualizado:', res);
                     message.success('Cliente actualizado correctamente');
                 } else {
-                    const newClientResponse: any = await ClientService.createClient(parsedClients, session.user.token.token);
+                    const newClientResponse: any = await ClientService.createClient(parsedClients, token);
                     const newClientId = newClientResponse[0].id;
                     const fieldsValue = form.getFieldsValue();
                     fieldsValue.users[index].id = newClientId;
@@ -83,8 +81,7 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
 
     const handleValidation = async (index: number) => {
         try {
-            if (session?.user?.token?.token) {
-                const token = session.user.token.token;
+            if (token) {
                 setLoading(true);
                 const cedula = form.getFieldValue(['users', index, 'numero_documento']);
                 const client: Client = await ClientService.getClientByCedula(cedula, token);
@@ -152,7 +149,7 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
                         {fields.map(({ key, name, ...restField }, index) => (
                             <div key={key} className='items-center mb-10'>
                                 <div className='w-full'>
-                                    <div className='flex'>
+                                    <div className='flex space-x-5'>
                                         <Item
                                             {...restField}
                                             label="Nombre"
@@ -194,7 +191,7 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
                                         </Item>
                                     </div>
 
-                                    <div className='flex flex-col md:flex-row items-start md:items-center'>
+                                    <div className='flex flex-col md:flex-row items-start md:items-center space-x-5'>
                                         <Item
                                             {...restField}
                                             label="Nro de documento"
@@ -217,7 +214,7 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange }: any) => {
                                         </Button>
                                     </div>
 
-                                    <div className='flex'>
+                                    <div className='flex space-x-5'>
                                         <Item
                                             {...restField}
                                             label="Ciudadanía"

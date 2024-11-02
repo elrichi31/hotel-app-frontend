@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, message, DatePicker, InputNumber } from 'antd';
+import { Form, Button, message, DatePicker, InputNumber } from 'antd';
 import SelectRoomCard from '@/components/SelectRoomCard';
 import RoomService from '@/services/RoomService';
-import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
 import VentasService from '@/services/VentasService';
 import type { DatePickerProps } from 'antd';
-import type { Dayjs } from 'dayjs';
-
+import { useRouter } from 'next/navigation';
 const { RangePicker } = DatePicker;
 const { Item } = Form;
 
@@ -25,8 +23,9 @@ const formatDate = (date: any) => {
     return `${day} de ${month} ${year} ${hours}:${minutes}`;
 };
 
-const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
+const VentaForm = ({ personIds, initialVenta, idVenta, token }: any) => {
     const [form] = Form.useForm();
+    const router = useRouter();
     const [selectedCards, setSelectedCards] = useState<{ id: string, price: number, priceId: number }[]>([]);
     const [rooms, setRooms] = useState<any[]>([]);
     const [subtotal, setSubtotal] = useState<number>(0);
@@ -34,7 +33,6 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
     const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs | null] | null>(null);
     const [discount, setDiscount] = useState<number>(0); // Valor predeterminado de 0 para el descuento
     const [loading, setLoading] = useState<boolean>(false); // Estado para el botón de enviar
-    const { data: session } = useSession();
 
     useEffect(() => {
         if (initialVenta) {
@@ -58,8 +56,8 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
     useEffect(() => {
         const fetchRooms = async () => {
             try {
-                if (session?.user?.token?.token) {
-                    const roomsData = await RoomService.getAllRooms(session.user.token.token);
+                if (token) {
+                    const roomsData = await RoomService.getAllRooms(token);
                     setRooms(roomsData);
                 }
             } catch (error) {
@@ -68,7 +66,7 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
             }
         };
         fetchRooms();
-    }, [session]);
+    }, []);
 
     useEffect(() => {
         const calculateTotal = () => {
@@ -148,16 +146,17 @@ const VentaForm = ({ personIds, initialVenta, idVenta }: any) => {
         const fecha_fin = dates && dates[1] ? dates[1].format('YYYY-MM-DD HH:mm') : null;
 
         const newValues = { habitaciones, precios, fecha_inicio, fecha_fin, subtotal, total, descuento: discount, personas: personIds };
-        if (session?.user?.token?.token) {
+        if (token) {
             setLoading(true);
             console.log('newValues:', newValues); 
             try {
                 if(initialVenta){
-                    await VentasService.updateVenta(session.user.token.token, idVenta , newValues);
+                    await VentasService.updateVenta(token, idVenta , newValues);
                     message.success('Venta actualizada exitosamente 🎉');
                 } else {
-                    await VentasService.createVenta(session.user.token.token, newValues);
+                    await VentasService.createVenta(token, newValues);
                     message.success('Venta creada exitosamente 🎉');
+                    router.push('/ventas');
                 }
             } catch (error) {
                 console.error('Error creating venta:', error);
