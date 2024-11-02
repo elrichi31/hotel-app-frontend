@@ -127,12 +127,11 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
         <div className="container mx-auto p-4">
             <h1 className="text-2xl font-bold mb-4">Detalles de las Reservas</h1>
 
-            <div className="mb-4 flex justify-between items-center">
-                <div className="flex items-center">
+            <div className="mb-4 flex flex-col lg:flex-row w-full space-x-0 lg:space-x-10 space-y-5 lg:space-y-0">
+                <div className="flex flex-col sm:flex-row sm:items-center w-full space-x-0 sm:space-x-3 space-y-3 sm:space-y-0">
                     <Select
                         value={selectedOption}
                         onChange={setSelectedOption}
-                        style={{ width: 200, marginRight: 10 }}
                     >
                         <Option value="hoy">Hoy</Option>
                         <Option value="ayer">Ayer</Option>
@@ -143,17 +142,17 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
                     <RangePicker
                         format="DD/MM/YYYY"
                         onChange={handleDateRangeChange}
-                        style={{ marginRight: 10 }}
                     />
                     <Button onClick={handleFilter} type="primary">Aplicar Filtro</Button>
                 </div>
-                <Input
-                    placeholder="Buscar..."
-                    prefix={<SearchOutlined />}
-                    value={searchText}
-                    onChange={handleSearch}
-                    style={{ width: 300 }}
-                />
+                <div className='w-full'>
+                    <Input
+                        placeholder="Buscar..."
+                        prefix={<SearchOutlined />}
+                        value={searchText}
+                        onChange={handleSearch}
+                    />
+                </div>
             </div>
 
             {filteredReservas.length === 0 ? (

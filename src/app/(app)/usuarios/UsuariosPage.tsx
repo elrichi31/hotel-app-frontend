@@ -206,7 +206,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Lista de Usuarios</h1>
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-4 flex justify-between items-center space-x-2">
         <Input
           placeholder="Buscar usuarios..."
           prefix={<SearchOutlined />}

@@ -98,7 +98,7 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
             <Form
                 form={form}
                 layout='vertical'
-                className='w-[450px] m-auto my-10'
+                className='my-10'
                 initialValues={initialValues}
                 onValuesChange={handleValuesChange}
             >
@@ -197,7 +197,7 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                                                 rules={[{ required: true, message: 'Por favor ingresa la cantidad' }]}
                                                 className='m-auto'
                                             >
-                                                <InputNumber min={1} placeholder="Cantidad" className='w-full' />
+                                                <InputNumber min={1} placeholder="Cantidad" className='w-full' style={{minWidth: "30px"}}/>
                                             </Form.Item>
                                             <Form.Item
                                                 {...restField}
@@ -207,7 +207,7 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                                                 rules={[{ required: true, message: 'Por favor ingresa la descripción' }]}
                                                 className='m-auto'
                                             >
-                                                <Input placeholder="Descripción" className='w-full' />
+                                                <Input placeholder="Descripción" className='w-full' style={{minWidth: "90px"}}/>
                                             </Form.Item>
                                             <Form.Item
                                                 {...restField}
@@ -217,7 +217,7 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                                                 rules={[{ required: true, message: 'Por favor ingresa el precio unitario' }]}
                                                 className='m-auto'
                                             >
-                                                <InputNumber min={0} placeholder="Precio unitario" className='w-full' />
+                                                <InputNumber min={0} placeholder="Precio unitario" style={{minWidth: "120px"}}/>
                                             </Form.Item>
                                             <MinusCircleOutlined onClick={() => remove(name)} className='self-center text-red-500' />
                                         </div>

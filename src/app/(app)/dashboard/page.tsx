@@ -15,7 +15,7 @@ const DashboardPage = async () => {
     return <p>Debes iniciar sesión para acceder al dashboard.</p>;
   }
 
-  return <Dashboard session={session} />;
+  return <Dashboard />;
 };
 
 export default DashboardPage;
