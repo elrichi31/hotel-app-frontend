@@ -28,6 +28,7 @@ const RoomModal = ({ open, onCancel, onOk, room, edit }: any) => {
       cancelText="Cancelar"
       onCancel={onCancel}
       onOk={handleOk}
+      width={450}
     >
       <Form form={form} layout="vertical" initialValues={room}>
         {!edit && (
@@ -84,25 +85,22 @@ const RoomModal = ({ open, onCancel, onOk, room, edit }: any) => {
           {(fields, { add, remove }) => (
             <>
               {fields.map(({ key, name, ...restField }) => (
-                <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline" className='items-center'>
+                <Space key={key} style={{ display: 'flex', marginBottom: 2, justifyContent: 'space-between'}}>
                   <Form.Item
                     {...restField}
                     name={[name, 'numero_personas']}
                     label="Personas"
-                    layout='horizontal'
                     rules={[{ required: true, message: 'Por favor ingresa el número de personas' }]}
-                    className=''
                   >
-                    <InputNumber min={1} placeholder="Número de Personas" className='w-[90%]' />
+                    <InputNumber min={1} placeholder="Número de Personas" style={{width: "100%"}}/>
                   </Form.Item>
                   <Form.Item
                     {...restField}
                     name={[name, 'precio']}
                     label="Precio"
-                    layout='horizontal'
                     rules={[{ required: true, message: 'Por favor ingresa el precio' }]}
                   >
-                    <InputNumber min={0} placeholder="Precio" className='w-[90%]'/>
+                    <InputNumber min={0} placeholder="Precio" style={{width: "100%"}}/>
                   </Form.Item>
                   <MinusCircleOutlined onClick={() => remove(name)}/>
                 </Space>
