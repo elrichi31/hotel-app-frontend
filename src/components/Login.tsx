@@ -1,20 +1,15 @@
 "use client";
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Checkbox, Form, Input, message, Spin } from 'antd';
-import type { FormProps } from 'antd';
 import { signIn, useSession } from 'next-auth/react';
-
-type FieldType = {
-  username: string;
-  password: string;
-  remember: boolean;
-};
-
+import { Button, Form, Input, message, Divider, Spin } from 'antd';
+import img from '../../public/img.webp'
+import Image from 'next/image';
 const Login: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   // Redirigir al usuario si ya está autenticado
   useEffect(() => {
@@ -23,8 +18,8 @@ const Login: React.FC = () => {
     }
   }, [session, router]);
 
-  const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
-    setLoading(true); // Inicia la carga
+  const onFinish = async (values: { username: string; password: string }) => {
+    setLoading(true);
     const responseNextAuth = await signIn('credentials', {
       redirect: false,
       ...values,
@@ -32,7 +27,7 @@ const Login: React.FC = () => {
 
     if (responseNextAuth?.error) {
       message.error(`Inicio de sesión fallido: ${responseNextAuth.error}`);
-      setLoading(false); // Finaliza la carga en caso de error
+      setLoading(false);
       return;
     }
 
@@ -40,55 +35,63 @@ const Login: React.FC = () => {
     router.push('/dashboard');
   };
 
-  const onFinishFailed: FormProps<FieldType>['onFinishFailed'] = (errorInfo) => {
-    console.log('Failed:', errorInfo);
-    message.error('Login failed');
-  };
-
   return (
-    <div className="flex justify-center items-center min-h-screen">
-      <div className="bg-white p-10 rounded-lg shadow-lg border border-gray-200 w-full max-w-md">
-        <Form
-          name="basic"
-          initialValues={{ remember: true }}
-          onFinish={onFinish}
-          onFinishFailed={onFinishFailed}
-          autoComplete="off"
-        >
-          <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
-          <Form.Item
-            label="Username"
-            name="username"
-            rules={[{ required: true, message: 'Ingrese su nombre de usuario!' }]}
-            className="mb-4"
-          >
-            <Input className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
-
-          <Form.Item
-            label="Password"
-            name="password"
-            rules={[{ required: true, message: 'Ingrese su contraseña' }]}
-            className="mb-4"
-          >
-            <Input.Password className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
-
-          <a href="/request-reset" className="block text-blue-500 text-sm mb-4">
-            Olvidaste tu contraseña
-          </a>
-
-          <Form.Item className="mb-0 text-center">
-            <Button
-              type="primary"
-              htmlType="submit"
-              className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-              disabled={loading}
+    <div className="flex min-h-screen bg-gray-100">
+      <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-[480px]">
+        <div className="mx-auto w-full max-w-sm">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-semibold">Log in to your account</h1>
+            <p className="text-gray-600">Enter your credentials to access your account</p>
+          </div>
+          <div className="flex flex-col gap-4">
+            <Form
+              name="login"
+              initialValues={{ remember: true }}
+              onFinish={onFinish}
+              layout="vertical"
+              autoComplete="off"
+              className="space-y-4"
             >
-              {loading ? <Spin /> : 'Inicia sesión'}
-            </Button>
-          </Form.Item>
-        </Form>
+              <Form.Item
+                label="Username"
+                name="username"
+                rules={[{ required: true, message: 'Please enter your username' }]}
+              >
+                <Input placeholder="Enter your username"/>
+              </Form.Item>
+              <Form.Item
+                label="Password"
+                name="password"
+                rules={[{ required: true, message: 'Please enter your password' }]}
+              >
+                <Input.Password placeholder="Enter your password" />
+              </Form.Item>
+              <div className="flex items-center justify-between text-sm">
+                <a href="/request-reset" className="text-blue-500 hover:underline">
+                  Forgot password?
+                </a>
+              </div>
+              <Button
+                type="primary"
+                htmlType="submit"
+                size="large"
+                block
+                disabled={loading}
+                className="bg-blue-500"
+              >
+                {loading ? <Spin /> : 'Sign in'}
+              </Button>
+            </Form>
+          </div>
+        </div>
+      </div>
+      <div className="hidden lg:flex lg:flex-1 bg-white items-center justify-center">
+        <div className="text-center px-12 py-16">
+          <h2 className="text-[100px] font-bold mb-4">Welcome to HotelApp</h2>
+          <p className="text-lg text-gray-600 mb-8">
+            Experience the next generation of hotel management. Book, manage, and enjoy your stay with ease.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -5,8 +5,7 @@ export const metadata = {
 const Layout = ({ children }: any) => { 
     return (
         <div>
-            <div className="font-sans text-gray-900 antialiased">
-                auth
+            <div>
                 {children}
             </div>
         </div>

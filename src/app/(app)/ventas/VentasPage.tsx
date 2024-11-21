@@ -150,8 +150,8 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
                         {
                             title: 'Acciones', key: 'actions', render: (text, venta) => (
                                 <div className="flex space-x-5">
-                                    <EditOutlined className='text-xl' onClick={() => handleEdit(venta)} type="link">Editar</EditOutlined>
-                                    <DiffOutlined className='text-xl' onClick={() => router.push(`ventas/facturas/${venta.id}`)} type="link">Ver Facturas</DiffOutlined>
+                                    <a onClick={() => handleEdit(venta)} type="link">Editar</a>
+                                    <a onClick={() => router.push(`ventas/facturas/${venta.id}`)} type="link">Facturas</a>
                                     <Popconfirm title="¿Estás seguro de eliminar esta venta?" onConfirm={() => handleDelete(venta.id)} okText="Sí" cancelText="No" placement='left'>
                                         <CloseOutlined className='text-xl' style={{ color: 'red', cursor: 'pointer' }}>Eliminar</CloseOutlined>
                                     </Popconfirm>

@@ -108,7 +108,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
   return (
     <Card className="w-[350px]" style={{marginBottom: "20px", marginTop: "20px"}}>
       <div className="flex justify-between items-center mb-4">
-        <Title level={4} style={{ marginBottom: 0 }}>Factura #{factura.numero_factura}</Title>
+        <Title level={4} style={{ marginBottom: 0 }}>Factura #{factura.id}</Title>
         <Badge color={getStatusColor(factura.estado)} text={factura.estado.toUpperCase()} />
       </div>
 

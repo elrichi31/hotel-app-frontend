@@ -174,15 +174,6 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
                     </Form.Item>
                 </div>
                 <div className='w-full'>
-                    <Form.Item
-                        label='# Factura'
-                        name='numero_factura'
-                        rules={[{ required: true, message: 'Por favor ingrese un numero de factura' }]}
-                    >
-                        <Input className='w-full' placeholder='#' />
-                    </Form.Item>
-                </div>
-                <div className='w-full'>
                     <Form.List name="productos">
                         {(fields, { add, remove }) => (
                             <>

@@ -218,6 +218,7 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
             title: '# Factura',
             dataIndex: 'id',
             key: 'numero_factura',
+            sorter: (a: any, b: any) => a.id - b.id,
         },
         {
             title: 'Subtotal',
