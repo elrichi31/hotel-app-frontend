@@ -1,15 +1,17 @@
 "use client";
-import React from "react";
-import { Layout, Button, Menu, Row, Col, Card, Typography, Divider } from "antd";
+import React, { useState } from "react";
+import { Layout, Button, Menu, Row, Col, Card, Typography, Divider, Drawer } from "antd";
 import {
   CalendarOutlined,
   BarChartOutlined,
   UserOutlined,
   CheckCircleOutlined,
+  MenuOutlined,
 } from "@ant-design/icons";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Paragraph } = Typography;
@@ -17,11 +19,14 @@ const { Title, Paragraph } = Typography;
 const LandingPage: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const handleLogin = () => router.push("/login");
   const handleRegister = () => router.push("/register");
   const handleDashboard = () => router.push("/dashboard");
   const handleLogout = () => signOut();
+
+  const toggleDrawer = () => setDrawerVisible(!drawerVisible);
 
   return (
     <Layout className="min-h-screen">
@@ -33,37 +38,76 @@ const LandingPage: React.FC = () => {
               HotelApp
             </Title>
           </Link>
-          <Menu mode="horizontal" selectable={false} className="border-none flex gap-6">
-            <Menu.Item key="features">
-              <Link href="#features">Features</Link>
-            </Menu.Item>
-            <Menu.Item key="pricing">
-              <Link href="#pricing">Pricing</Link>
-            </Menu.Item>
-          </Menu>
-          <div className="flex items-center gap-4">
-            {status === "authenticated" ? (
-              <>
-                <Button type="default" onClick={handleDashboard}>
-                  Dashboard
-                </Button>
-                <Button type="primary" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
+          <div className="hidden md:flex gap-6">
+            <Menu mode="horizontal" selectable={false} className="border-none flex gap-6">
+              <Menu.Item key="features">
+                <Link href="#features">Features</Link>
+              </Menu.Item>
+              <Menu.Item key="pricing">
+                <Link href="#pricing">Pricing</Link>
+              </Menu.Item>
+            </Menu>
+            <div className="flex items-center gap-4">
+              {status === "authenticated" ? (
+                <>
+                  <Button type="default" onClick={handleDashboard}>
+                    Dashboard
+                  </Button>
+                  <Button type="primary" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </>
+              ) : (
                 <Button type="default" onClick={handleLogin}>
                   Login
                 </Button>
-              </>
-            )}
+              )}
+            </div>
+          </div>
+          {/* Hamburger menu for mobile */}
+          <div className="md:hidden">
+            <Button type="text" icon={<MenuOutlined />} onClick={toggleDrawer} />
           </div>
         </div>
       </Header>
 
+      {/* Drawer for mobile menu */}
+      <Drawer
+        title="Menu"
+        placement="right"
+        onClose={toggleDrawer}
+        visible={drawerVisible}
+        className="md:hidden"
+      >
+        <Menu mode="vertical" selectable={false}>
+          <Menu.Item key="features">
+            <Link href="#features">Features</Link>
+          </Menu.Item>
+          <Menu.Item key="pricing">
+            <Link href="#pricing">Pricing</Link>
+          </Menu.Item>
+        </Menu>
+        <Divider />
+        <div className="flex flex-col gap-4">
+          {status === "authenticated" ? (
+            <>
+              <Button block type="default" onClick={handleDashboard}>
+                Dashboard
+              </Button>
+              <Button block type="primary" onClick={handleLogout}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button block type="primary" onClick={handleLogin}>
+              Login
+            </Button>
+          )}
+        </div>
+      </Drawer>
+
       {/* Main Content */}
-      <Content>
+      <Content className="bg-gray-50">
         {/* Hero Section */}
         <div className="py-48 md:py-[350px] text-center">
           <div className="container mx-auto px-4">
@@ -115,7 +159,7 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* Pricing Section */}
-        <div id="pricing" className="py-12 md:py-24">
+        <div id="pricing" className="py-12 md:py-24 bg-gray-50">
           <div className="container mx-auto px-4">
             <Title level={2} className="text-center mb-12">
               Simple, Transparent Pricing
@@ -193,7 +237,7 @@ const LandingPage: React.FC = () => {
       </Content>
 
       {/* Footer */}
-      <Footer className="py-6 text-center">
+      <Footer className="bg-white py-6 text-center">
         <Paragraph type="secondary">© 2024 HotelApp. All rights reserved.</Paragraph>
       </Footer>
     </Layout>
