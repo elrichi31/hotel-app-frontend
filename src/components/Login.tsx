@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { Button, Form, Input, message, Divider, Spin } from 'antd';
-import img from '../../public/img.webp'
 import Image from 'next/image';
+
 const Login: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
@@ -40,8 +40,8 @@ const Login: React.FC = () => {
       <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-[480px]">
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-semibold">Log in to your account</h1>
-            <p className="text-gray-600">Enter your credentials to access your account</p>
+            <h1 className="text-2xl font-semibold">Inicia sesión en tu cuenta</h1>
+            <p className="text-gray-600">Ingresa tus credenciales para acceder a tu cuenta</p>
           </div>
           <div className="flex flex-col gap-4">
             <Form
@@ -53,22 +53,22 @@ const Login: React.FC = () => {
               className="space-y-4"
             >
               <Form.Item
-                label="Username"
+                label="Nombre de usuario"
                 name="username"
-                rules={[{ required: true, message: 'Please enter your username' }]}
+                rules={[{ required: true, message: 'Por favor ingresa tu nombre de usuario' }]}
               >
-                <Input placeholder="Enter your username"/>
+                <Input placeholder="Ingresa tu nombre de usuario" />
               </Form.Item>
               <Form.Item
-                label="Password"
+                label="Contraseña"
                 name="password"
-                rules={[{ required: true, message: 'Please enter your password' }]}
+                rules={[{ required: true, message: 'Por favor ingresa tu contraseña' }]}
               >
-                <Input.Password placeholder="Enter your password" />
+                <Input.Password placeholder="Ingresa tu contraseña" />
               </Form.Item>
               <div className="flex items-center justify-between text-sm">
                 <a href="/request-reset" className="text-blue-500 hover:underline">
-                  Forgot password?
+                  ¿Olvidaste tu contraseña?
                 </a>
               </div>
               <Button
@@ -79,7 +79,7 @@ const Login: React.FC = () => {
                 disabled={loading}
                 className="bg-blue-500"
               >
-                {loading ? <Spin /> : 'Sign in'}
+                {loading ? <Spin /> : 'Iniciar sesión'}
               </Button>
             </Form>
           </div>
@@ -87,9 +87,9 @@ const Login: React.FC = () => {
       </div>
       <div className="hidden lg:flex lg:flex-1 bg-white items-center justify-center">
         <div className="text-center px-12 py-16">
-          <h2 className="text-[100px] font-bold mb-4">Welcome to HotelApp</h2>
+          <h2 className="text-[100px] font-bold mb-4">Bienvenido a HotelApp</h2>
           <p className="text-lg text-gray-600 mb-8">
-            Experience the next generation of hotel management. Book, manage, and enjoy your stay with ease.
+            Experimenta la nueva generación en gestión hotelera. Reserva, administra y disfruta de tu estadía con facilidad.
           </p>
         </div>
       </div>

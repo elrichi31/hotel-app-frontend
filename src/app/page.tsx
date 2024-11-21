@@ -16,7 +16,7 @@ import Image from "next/image";
 const { Header, Content, Footer } = Layout;
 const { Title, Paragraph } = Typography;
 
-const LandingPage: React.FC = () => {
+const PaginaPrincipal: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -30,7 +30,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <Layout className="min-h-screen">
-      {/* Header */}
+      {/* Encabezado */}
       <Header style={{ backgroundColor: "white", borderBottom: "none" }} className="px-4 lg:px-6">
         <div className="flex items-center justify-between">
           <Link href="#" className="flex items-center">
@@ -41,10 +41,10 @@ const LandingPage: React.FC = () => {
           <div className="hidden md:flex gap-6">
             <Menu mode="horizontal" selectable={false} className="border-none flex gap-6">
               <Menu.Item key="features">
-                <Link href="#features">Features</Link>
+                <Link href="#features">Características</Link>
               </Menu.Item>
               <Menu.Item key="pricing">
-                <Link href="#pricing">Pricing</Link>
+                <Link href="#pricing">Precios</Link>
               </Menu.Item>
             </Menu>
             <div className="flex items-center gap-4">
@@ -54,26 +54,26 @@ const LandingPage: React.FC = () => {
                     Dashboard
                   </Button>
                   <Button type="primary" onClick={handleLogout}>
-                    Logout
+                    Cerrar Sesión
                   </Button>
                 </>
               ) : (
                 <Button type="default" onClick={handleLogin}>
-                  Login
+                  Iniciar Sesión
                 </Button>
               )}
             </div>
           </div>
-          {/* Hamburger menu for mobile */}
+          {/* Menú hamburguesa para dispositivos móviles */}
           <div className="md:hidden">
             <Button type="text" icon={<MenuOutlined />} onClick={toggleDrawer} />
           </div>
         </div>
       </Header>
 
-      {/* Drawer for mobile menu */}
+      {/* Menú lateral para dispositivos móviles */}
       <Drawer
-        title="Menu"
+        title="Menú"
         placement="right"
         onClose={toggleDrawer}
         visible={drawerVisible}
@@ -81,10 +81,10 @@ const LandingPage: React.FC = () => {
       >
         <Menu mode="vertical" selectable={false}>
           <Menu.Item key="features">
-            <Link href="#features">Features</Link>
+            <Link href="#features">Características</Link>
           </Menu.Item>
           <Menu.Item key="pricing">
-            <Link href="#pricing">Pricing</Link>
+            <Link href="#pricing">Precios</Link>
           </Menu.Item>
         </Menu>
         <Divider />
@@ -95,62 +95,62 @@ const LandingPage: React.FC = () => {
                 Dashboard
               </Button>
               <Button block type="primary" onClick={handleLogout}>
-                Logout
+                Cerrar Sesión
               </Button>
             </>
           ) : (
             <Button block type="primary" onClick={handleLogin}>
-              Login
+              Iniciar Sesión
             </Button>
           )}
         </div>
       </Drawer>
 
-      {/* Main Content */}
+      {/* Contenido Principal */}
       <Content className="bg-gray-50">
-        {/* Hero Section */}
+        {/* Sección Hero */}
         <div className="py-48 md:py-[350px] text-center">
           <div className="container mx-auto px-4">
             <Title level={1} className="mb-4">
-              Revolutionize Your Hotel Management
+              Revoluciona la Gestión de tu Hotel
             </Title>
             <Paragraph className="text-lg text-gray-600">
-              Streamline operations, boost guest satisfaction, and increase revenue with HotelApp - the all-in-one solution for modern hoteliers.
+              Optimiza las operaciones, mejora la satisfacción de los huéspedes y aumenta los ingresos con HotelApp, la solución todo en uno para hoteleros modernos.
             </Paragraph>
           </div>
         </div>
 
-        {/* Features Section */}
+        {/* Sección de Características */}
         <div id="features" className="py-12 md:py-24 bg-white">
           <div className="container mx-auto px-4">
             <Title level={2} className="text-center mb-12">
-              Key Features
+              Características Principales
             </Title>
             <Row gutter={[24, 24]}>
               <Col xs={24} md={8}>
                 <Card hoverable>
                   <CalendarOutlined className="text-primary text-4xl mb-4" />
-                  <Title level={3}>Smart Booking Management</Title>
+                  <Title level={3}>Gestión Inteligente de Reservas</Title>
                   <Paragraph>
-                    Effortlessly manage reservations, room assignments, and check-ins/check-outs with our intuitive interface.
+                    Administra fácilmente reservas, asignaciones de habitaciones y check-ins/check-outs con nuestra interfaz intuitiva.
                   </Paragraph>
                 </Card>
               </Col>
               <Col xs={24} md={8}>
                 <Card hoverable>
                   <UserOutlined className="text-primary text-4xl mb-4" />
-                  <Title level={3}>Guest Relationship Management</Title>
+                  <Title level={3}>Gestión de Relaciones con Huéspedes</Title>
                   <Paragraph>
-                    Build lasting relationships with guests through personalized experiences and communication tools.
+                    Construye relaciones duraderas con los huéspedes mediante experiencias personalizadas y herramientas de comunicación.
                   </Paragraph>
                 </Card>
               </Col>
               <Col xs={24} md={8}>
                 <Card hoverable>
                   <BarChartOutlined className="text-primary text-4xl mb-4" />
-                  <Title level={3}>Real-time Analytics</Title>
+                  <Title level={3}>Analíticas en Tiempo Real</Title>
                   <Paragraph>
-                    Make data-driven decisions with comprehensive reports on occupancy, revenue, and guest satisfaction.
+                    Toma decisiones basadas en datos con informes completos sobre ocupación, ingresos y satisfacción de huéspedes.
                   </Paragraph>
                 </Card>
               </Col>
@@ -158,75 +158,75 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Pricing Section */}
+        {/* Sección de Precios */}
         <div id="pricing" className="py-12 md:py-24 bg-gray-50">
           <div className="container mx-auto px-4">
             <Title level={2} className="text-center mb-12">
-              Simple, Transparent Pricing
+              Precios Simples y Transparentes
             </Title>
             <Row gutter={[24, 24]}>
               <Col xs={24} md={8}>
                 <Card>
-                  <Title level={4}>Starter</Title>
-                  <Paragraph>For small hotels and B&Bs</Paragraph>
+                  <Title level={4}>Básico</Title>
+                  <Paragraph>Para pequeños hoteles y B&Bs</Paragraph>
                   <Divider />
-                  <Title level={2}>$49/mo</Title>
+                  <Title level={2}>$49/mes</Title>
                   <ul>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Up to 20 rooms
+                      Hasta 20 habitaciones
                     </li>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Basic reporting
+                      Reportes básicos
                     </li>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Email support
+                      Soporte por correo
                     </li>
                   </ul>
                 </Card>
               </Col>
               <Col xs={24} md={8}>
                 <Card>
-                  <Title level={4}>Professional</Title>
-                  <Paragraph>For medium-sized hotels</Paragraph>
+                  <Title level={4}>Profesional</Title>
+                  <Paragraph>Para hoteles medianos</Paragraph>
                   <Divider />
-                  <Title level={2}>$99/mo</Title>
+                  <Title level={2}>$99/mes</Title>
                   <ul>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Up to 100 rooms
+                      Hasta 100 habitaciones
                     </li>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Advanced analytics
+                      Analíticas avanzadas
                     </li>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      24/7 phone support
+                      Soporte telefónico 24/7
                     </li>
                   </ul>
                 </Card>
               </Col>
               <Col xs={24} md={8}>
                 <Card>
-                  <Title level={4}>Enterprise</Title>
-                  <Paragraph>For large hotel chains</Paragraph>
+                  <Title level={4}>Empresarial</Title>
+                  <Paragraph>Para grandes cadenas de hoteles</Paragraph>
                   <Divider />
-                  <Title level={2}>Custom</Title>
+                  <Title level={2}>Personalizado</Title>
                   <ul>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Unlimited rooms
+                      Habitaciones ilimitadas
                     </li>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Custom integrations
+                      Integraciones personalizadas
                     </li>
                     <li>
                       <CheckCircleOutlined className="text-primary mr-2" />
-                      Dedicated account manager
+                      Gestor de cuentas dedicado
                     </li>
                   </ul>
                 </Card>
@@ -236,12 +236,12 @@ const LandingPage: React.FC = () => {
         </div>
       </Content>
 
-      {/* Footer */}
+      {/* Pie de página */}
       <Footer className="bg-white py-6 text-center">
-        <Paragraph type="secondary">© 2024 HotelApp. All rights reserved.</Paragraph>
+        <Paragraph type="secondary">© 2024 HotelApp. Todos los derechos reservados.</Paragraph>
       </Footer>
     </Layout>
   );
 };
 
-export default LandingPage;
+export default PaginaPrincipal;

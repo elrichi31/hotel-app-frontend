@@ -1,5 +1,5 @@
 export const metadata = {
-    title: 'Auth Layout',
+    title: 'Login | HotelApp',
 }
 
 const Layout = ({ children }: any) => { 
