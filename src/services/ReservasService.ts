@@ -77,11 +77,19 @@ const ReservaService = {
                     fecha_fin,
                 }
             );
-            return response.data;
+            return response.status = 200;
         } catch (error) {
             throw new Error('Error al verificar la disponibilidad de la reserva');
         }
     },
+
+    async confirmReserva(id: string): Promise<void> {
+        try {
+            const response = await axios.get(`/confirm-reserva/${id}`);
+        } catch (error) {
+            throw new Error('Error al confirmar la reserva');
+        }
+    }
 };
 
 export default ReservaService;

@@ -86,6 +86,7 @@ export default function ReservasPage() {
       const reservaData: ReservaData = {
         nombre: values.nombre,
         apellido: values.apellido,
+        email: values.email,
         fecha_inicio: fecha_inicio.format('YYYY-MM-DD'), // Formato YYYY-MM-DD
         fecha_fin: fecha_fin.format('YYYY-MM-DD'),       // Formato YYYY-MM-DD
         habitaciones,
@@ -97,6 +98,7 @@ export default function ReservasPage() {
   
       const res = await ReservaService.createReserva(reservaData);
       console.log('Reserva creada:', res);
+      
       setReservationSuccess(true); // Marca la reserva como exitosa
       form.resetFields();
       setSelectedCards([]);
@@ -170,6 +172,13 @@ export default function ReservasPage() {
             rules={[{ required: true, message: 'Por favor ingrese el apellido' }]}
           >
             <Input placeholder="Ingresa tu apellido" />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label="Correo Electrónico"
+            rules={[{ required: true, message: 'Por favor ingrese el correo electrónico' }]}
+          >
+            <Input placeholder="Ingresa tu correo electrónico" />
           </Form.Item>
           <Form.Item
             name="fechas"

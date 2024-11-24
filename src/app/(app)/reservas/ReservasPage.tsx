@@ -203,6 +203,11 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
                             key: 'total',
                         },
                         {
+                            title: 'Estado',
+                            dataIndex: 'estado',
+                            key: 'estado',
+                        },
+                        {
                             title: 'Acciones',
                             key: 'actions',
                             render: (text: any, reserva: any) => (

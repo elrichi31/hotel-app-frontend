@@ -29,6 +29,7 @@ export interface Client {
 export interface ReservaData {
     nombre: string;
     apellido: string;
+    email: string; 
     fecha_inicio: string;
     fecha_fin: string;
     habitaciones: string[];
