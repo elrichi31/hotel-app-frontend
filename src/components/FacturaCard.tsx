@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Card, message, Popconfirm, Typography, Button, Badge, Divider } from 'antd';
 import { CloseOutlined, EditOutlined, PrinterOutlined, UserOutlined, EnvironmentOutlined, PhoneOutlined, MailOutlined, FileTextOutlined, CalendarOutlined, DollarOutlined, CreditCardOutlined } from '@ant-design/icons';
-import { useSession } from 'next-auth/react';
 import FacturaModal from './FacturaModal';
 import FacturasService from '@/services/FacturasService';
 import dayjs from 'dayjs';
+import { authOptions } from '@/lib/authOptions';
 
 const { Title, Text } = Typography;
 
@@ -30,7 +30,7 @@ interface Factura {
 interface CardFacturaProps {
   factura: Factura;
   onUpdate: (updatedFactura: Factura) => void;
-  onDelete: (facturaId: number) => void;
+  token: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -46,27 +46,14 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }) => {
-  const { data: session } = useSession();
+const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleDelete = async () => {
-    try {
-      if (session?.user?.token?.token) {
-        await FacturasService.deleteFactura(session.user.token.token, factura.id);
-        onDelete(factura.id);
-        message.success('Factura eliminada exitosamente');
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Error al eliminar la factura');
-    }
-  };
 
   const handleEmitir = async () => {
     try {
-      if (session?.user?.token?.token) {
+      if (token) {
         const updatedFactura = { ...factura, estado: 'emitido' };
-        const response = await FacturasService.updateFactura(session.user.token.token, factura.id, updatedFactura);
+        const response = await FacturasService.updateFactura(token, factura.id, updatedFactura);
         onUpdate(response);
         message.success('Factura emitida exitosamente');
       }
@@ -77,9 +64,9 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
 
   const handleAnular = async () => {
     try {
-      if (session?.user?.token?.token) {
+      if (token) {
         const updatedFactura = { ...factura, estado: 'anulado' };
-        const response = await FacturasService.updateFactura(session.user.token.token, factura.id, updatedFactura);
+        const response = await FacturasService.updateFactura(token, factura.id, updatedFactura);
         onUpdate(response);
         message.success('Factura anulada exitosamente');
       }
@@ -94,8 +81,8 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
 
   const handleOk = async (values: any) => {
     try {
-      if (session?.user?.token?.token) {
-        const updatedFactura = await FacturasService.updateFactura(session.user.token.token, factura.id, values);
+      if (token) {
+        const updatedFactura = await FacturasService.updateFactura(token, factura.id, values);
         message.success('Factura actualizada exitosamente');
         setIsModalOpen(false);
         onUpdate(updatedFactura);
@@ -106,7 +93,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, onDelete }
   };
 
   return (
-    <Card className="w-[350px]" style={{marginBottom: "20px", marginTop: "20px"}}>
+    <Card className="w-[350px]" style={{ marginBottom: "20px", marginTop: "20px" }}>
       <div className="flex justify-between items-center mb-4">
         <Title level={4} style={{ marginBottom: 0 }}>Factura #{factura.id}</Title>
         <Badge color={getStatusColor(factura.estado)} text={factura.estado.toUpperCase()} />

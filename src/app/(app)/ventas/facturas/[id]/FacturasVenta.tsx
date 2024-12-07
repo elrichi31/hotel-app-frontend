@@ -101,7 +101,7 @@ export default function FacturasVenta({ params, token }: any) {
                                     key={factura.id}
                                     factura={factura}
                                     onUpdate={updateFactura} // Pasa la función de actualización
-                                    onDelete={deleteFactura} // Pasa la función de eliminación
+                                    token={token}
                                 />
                             ))}
                         </div>
