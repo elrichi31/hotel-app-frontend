@@ -24,6 +24,7 @@ export interface Client {
     numero_documento: string;
     ciudadania: string;
     procedencia: string
+    isNew: boolean;
 }
 
 export interface ReservaData {

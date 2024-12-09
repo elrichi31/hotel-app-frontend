@@ -153,6 +153,7 @@ const VentaForm = ({ personIds, initialVenta, idVenta, token }: any) => {
                 if(initialVenta){
                     await VentasService.updateVenta(token, idVenta , newValues);
                     message.success('Venta actualizada exitosamente 🎉');
+                    router.push('/ventas');
                 } else {
                     await VentasService.createVenta(token, newValues);
                     message.success('Venta creada exitosamente 🎉');

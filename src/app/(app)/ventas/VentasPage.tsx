@@ -42,7 +42,10 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
 
                 const ventasHoy = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isSame(hoy, 'day'));
                 const ventasAyer = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isSame(ayer, 'day'));
-                const ventasUltimos7Dias = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isAfter(hace7Dias) && dayjs(venta.fecha_inicio).isBefore(ayer));
+                const ventasUltimos7Dias = ventasData.filter((venta: any) => 
+                    dayjs(venta.fecha_inicio).isBetween(hace7Dias, hoy, 'day', '[]') // Incluir bordes
+                );
+                
                 const ventasUltimoMes = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isAfter(hace1Mes));
 
                 setVentasHoy(ventasHoy.sort((a: any, b: any) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));

@@ -47,37 +47,48 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange, token }: any
 
     const onFinish = async (index: number) => {
         try {
-            if (token) {
-                const clientsData = form.getFieldsValue();
-                const data: Client = clientsData.users[index];
-                const parsedClients = {
-                    personas: [data]
-                };
-                if (validatedClients[data.id] || personas) {
-                    const res = await ClientService.updateClient(data.id as number, data, token);
-                    console.log('Cliente actualizado:', res);
-                    message.success('Cliente actualizado correctamente');
-                } else {
-                    const newClientResponse: any = await ClientService.createClient(parsedClients, token);
-                    const newClientId = newClientResponse[0].id;
-                    const fieldsValue = form.getFieldsValue();
-                    fieldsValue.users[index].id = newClientId;
-                    form.setFieldsValue(fieldsValue);
-                    setValidatedClients({ ...validatedClients, [newClientId]: true });
-                    setClientIds((prevIds) => [...prevIds, newClientId]);
-                    console.log('Cliente registrado:', newClientResponse[0]);
-                    message.success('Cliente registrado correctamente');
-                }
+            const clientsData = form.getFieldsValue();
+            const data = clientsData.users[index];
+    
+            const { nombre, apellido, tipo_documento, numero_documento, ciudadania, procedencia, id } = data;
+    
+            const payload = {
+                personas: [
+                    { nombre, apellido, tipo_documento, numero_documento, ciudadania, procedencia }
+                ]
+            };
+            if (!id) {
+                // Crear nuevo cliente
+                const newClientResponse: any = await ClientService.createClient(payload, token);
+                const newClientId = newClientResponse[0].id;
+            
+                // Actualiza el formulario, asigna el id y marca isNew como false
+                const fieldsValue = form.getFieldsValue();
+                fieldsValue.users[index].id = newClientId;
+                fieldsValue.users[index].isNew = false; 
+                form.setFieldsValue(fieldsValue);
+            
+                // Agregar el nuevo ID al estado
+                setClientIds((prevIds) => [...prevIds, newClientId]);
+            
+                message.success('Cliente registrado correctamente');
                 if (handlePanelChange) {
-                    handlePanelChange()
+                    handlePanelChange();
+                } 
+            } else {
+                // Actualizar cliente existente
+                await ClientService.updateClient(id, { nombre, apellido, tipo_documento, numero_documento, ciudadania, procedencia }, token);
+                message.success('Cliente actualizado correctamente');
+                if (handlePanelChange) {
+                    handlePanelChange();
                 }
-                setDisabledButtons({ ...disabledButtons, [data.id]: true });
-            }
+            }            
         } catch (error) {
             console.error('Error creando/actualizando clientes:', error);
             message.error('Error al registrar cliente');
         }
     };
+        
 
     const handleValidation = async (index: number) => {
         try {
@@ -89,22 +100,17 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange, token }: any
                     const fieldsValue = form.getFieldsValue();
                     fieldsValue.users[index] = {
                         ...fieldsValue.users[index],
-                        nombre: client?.nombre,
-                        apellido: client?.apellido,
-                        tipo_documento: client?.tipo_documento,
-                        numero_documento: client?.numero_documento,
-                        ciudadania: client?.ciudadania,
-                        procedencia: client?.procedencia,
-                        id: client?.id,
+                        ...client,
+                        isNew: false, // El cliente ya no es nuevo si se valida por cédula
                     };
                     form.setFieldsValue(fieldsValue);
                     setValidatedClients({ ...validatedClients, [client.id]: true });
                     setClientIds((prevIds: any) => [...prevIds, client.id]);
                     if (handlePanelChange) {
-                        handlePanelChange()
+                        handlePanelChange()   
                     }
                     message.success('Cédula validada correctamente');
-                    setDisabledButtons({ ...disabledButtons, [client.id]: true });
+                    setDisabledButtons({ ...disabledButtons, [client.id]: true });  
                 } else {
                     message.warning('No se encontró ningún cliente con esta cédula');
                 }
@@ -247,9 +253,16 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange, token }: any
                                     </div>
                                 </div>
                                 <div className='flex flex-col md:flex-row space-y-3 md:space-x-5 md:space-y-0'>
-                                    <Button type="primary" htmlType="submit" loading={loading} onClick={() => { onFinish(index) }}>
-                                        {validatedClients[form.getFieldValue(['users', index, 'id'])] || personas ? 'Actualizar Cliente' : 'Registrar Cliente'}
+                                    <Button
+                                        type="primary"
+                                        htmlType="submit"
+                                        loading={loading}
+                                        onClick={() => { onFinish(index); }}
+                                    >
+                                        {form.getFieldValue(['users', index, 'isNew']) ? 'Registrar Cliente' : 'Actualizar Cliente'}
                                     </Button>
+
+
                                     <Button type='dashed' danger className='flex' onClick={() => { remove(name); handleRemove(index); }} >
                                         <MinusCircleOutlined />
                                         <p>Eliminar persona</p>
@@ -258,10 +271,26 @@ const ClientForm = ({ personas, updateClientIds, handlePanelChange, token }: any
                             </div>
                         ))}
                         <Form.Item>
-                            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                            <Button
+                                type="dashed"
+                                onClick={() => {
+                                    add({
+                                        nombre: '',
+                                        apellido: '',
+                                        tipo_documento: '',
+                                        numero_documento: '',
+                                        ciudadania: '',
+                                        procedencia: '',
+                                        isNew: true, // Cliente nuevo
+                                    });
+                                }}
+                                block
+                                icon={<PlusOutlined />}
+                            >
                                 Agregar Cliente
                             </Button>
                         </Form.Item>
+
                     </div>
                 )}
             </Form.List>
