@@ -2,7 +2,8 @@
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import ReservaService from '@/services/ReservasService';
 import ReservaModal from '@/components/ReservaModal';
-import { Spin, Alert, message, Empty, Table } from 'antd';
+import ReservasLibresPage from './ReservasLibresPage';
+import { Spin, Alert, message, Empty, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -261,17 +262,8 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
     },
   ];
 
-  return (
-    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-      <PageHeader
-        title="Reservas"
-        subtitle={
-          <>
-            <strong style={{ color: notion.ink }}>{visibles.length}</strong> de {reservas.length} reservas
-          </>
-        }
-      />
-
+  const tabNativas = (
+    <>
       <TableToolbar
         search={busqueda}
         onSearch={setBusqueda}
@@ -322,6 +314,27 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
           reserva={selectedReserva}
         />
       )}
+    </>
+  );
+
+  return (
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <PageHeader
+        title="Reservas"
+        subtitle={
+          <>
+            <strong style={{ color: notion.ink }}>{visibles.length}</strong> de {reservas.length} reservas
+          </>
+        }
+      />
+
+      <Tabs
+        defaultActiveKey="nativas"
+        items={[
+          { key: 'nativas', label: 'Nativas', children: tabNativas },
+          { key: 'libres', label: 'Libres (externas)', children: <ReservasLibresPage token={token} /> },
+        ]}
+      />
     </div>
   );
 };

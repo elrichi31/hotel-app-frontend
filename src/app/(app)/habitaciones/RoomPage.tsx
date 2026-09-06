@@ -12,8 +12,11 @@ import {
   Hash,
   Wallet,
   UserSquare2,
+  Wifi,
+  Tv,
+  Users,
 } from 'lucide-react';
-import { Button, message, Table, Input, Segmented, Tooltip } from 'antd';
+import { Button, message, Table, Input, Segmented, Tooltip, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import RoomModal from '@/components/RoomModal';
 import { notion, viz } from '@/lib/theme';
@@ -176,6 +179,32 @@ export default function RoomsPage({ token }: RoomsPageProps) {
       width: 90,
     },
     {
+      title: <ColumnHeader icon={<Users size={13} />}>Capacidad</ColumnHeader>,
+      dataIndex: 'capacidad',
+      key: 'capacidad',
+      align: 'center',
+      sorter: (a, b) => (a.capacidad ?? 0) - (b.capacidad ?? 0),
+      render: (n: number) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{n ?? '-'}</span>
+      ),
+      width: 100,
+    },
+    {
+      title: 'Comodidades',
+      key: 'comodidades',
+      render: (_, room) => (
+        <Space size={10}>
+          <Tooltip title={room.wifi ? 'Tiene wifi' : 'Sin wifi'}>
+            <Wifi size={15} color={room.wifi ? viz.positive : notion.divider} />
+          </Tooltip>
+          <Tooltip title={room.tv_cable ? 'Tiene TV por cable' : 'Sin TV por cable'}>
+            <Tv size={15} color={room.tv_cable ? viz.positive : notion.divider} />
+          </Tooltip>
+        </Space>
+      ),
+      width: 110,
+    },
+    {
       title: <ColumnHeader icon={<Wallet size={13} />}>Tarifas</ColumnHeader>,
       key: 'tarifas',
       // Ordena por la tarifa más baja; sin tarifas va al final
@@ -286,6 +315,12 @@ export default function RoomsPage({ token }: RoomsPageProps) {
           // Las tarifas son una lista de 1..N: no caben en una celda, van aquí
           expandedRowRender: (room) => (
             <div style={{ padding: '4px 8px 10px' }}>
+              <div style={{ fontSize: 12, color: notion.inkFaint, marginBottom: 8 }}>
+                Camas {room.tipo_cama ? `de ${room.tipo_cama.toLowerCase()}` : ''}
+                {room.amenidades && room.amenidades.length > 0 && (
+                  <> · {room.amenidades.join(', ')}</>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: notion.inkFaint, marginBottom: 8 }}>
                 Tarifa por número de huéspedes
               </div>

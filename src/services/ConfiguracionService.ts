@@ -9,6 +9,8 @@ export interface Configuracion {
     direccion: string | null;
     telefono: string | null;
     correo: string | null;
+    reservas_nativas_activas: boolean;
+    reservas_libres_activas: boolean;
 }
 
 const ConfiguracionService = {
@@ -27,7 +29,15 @@ const ConfiguracionService = {
 
     async updateConfiguracion(
         token: string,
-        data: { nombre_hotel?: string; porcentaje_iva?: number; direccion?: string; telefono?: string; correo?: string },
+        data: {
+            nombre_hotel?: string;
+            porcentaje_iva?: number;
+            direccion?: string;
+            telefono?: string;
+            correo?: string;
+            reservas_nativas_activas?: boolean;
+            reservas_libres_activas?: boolean;
+        },
         logo?: File | null
     ): Promise<Configuracion> {
         try {
@@ -46,6 +56,32 @@ const ConfiguracionService = {
             return response.data;
         } catch (error: any) {
             throw new Error(error?.response?.data?.message ?? 'Error al actualizar la configuración');
+        }
+    },
+
+    // Solo admin: obtiene la api key vigente para el canal de reservas libres
+    async getReservasLibresApiKey(token: string): Promise<string> {
+        try {
+            const response = await axios.get('/configuracion/reservas-libres-api-key', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            return response.data.reservas_libres_api_key;
+        } catch (error: any) {
+            throw new Error(error?.response?.data?.message ?? 'Error al obtener la api key');
+        }
+    },
+
+    // Solo admin: invalida la key anterior y genera una nueva
+    async regenerarReservasLibresApiKey(token: string): Promise<string> {
+        try {
+            const response = await axios.post(
+                '/configuracion/reservas-libres-api-key/regenerar',
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            return response.data.reservas_libres_api_key;
+        } catch (error: any) {
+            throw new Error(error?.response?.data?.message ?? 'Error al regenerar la api key');
         }
     },
 };

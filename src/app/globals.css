@@ -79,3 +79,98 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Landing page: entrada "enfocada" al hacer scroll — nace difuminada, pequeña
+   y desplazada, y se asienta en foco (ver src/app/page.tsx). */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px) scale(0.96);
+  filter: blur(8px);
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform, filter;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Variante lateral para los showcases alternados */
+.reveal-side {
+  opacity: 0;
+  filter: blur(8px);
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform, filter;
+}
+.reveal-side[data-side="left"] {
+  transform: translateX(-32px) scale(0.97);
+}
+.reveal-side[data-side="right"] {
+  transform: translateX(32px) scale(0.97);
+}
+.reveal-side.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Tarjetas y botones "vivos": leve elevación al pasar el cursor, nunca en touch */
+@media (hover: hover) and (pointer: fine) {
+  .landing-card {
+    transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 240ms ease, background-color 240ms ease;
+  }
+  .landing-card:hover {
+    transform: translateY(-4px);
+  }
+}
+
+.landing-press {
+  transition: transform 160ms ease-out;
+}
+.landing-press:active {
+  transform: scale(0.97);
+}
+
+/* Deriva lenta y sutil de los resplandores de fondo (~28s, muy por debajo del
+   umbral de 0.2Hz que desaconseja Apple para fondos en movimiento) */
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, 4%) scale(1.08); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-4%, -3%) scale(1.05); }
+}
+.drift-a {
+  animation: drift-a 28s ease-in-out infinite;
+}
+.drift-b {
+  animation: drift-b 34s ease-in-out infinite;
+}
+
+@keyframes rise-fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-side {
+    transition: opacity 200ms ease;
+    transform: none !important;
+    filter: none !important;
+  }
+  .landing-card,
+  .landing-press,
+  .drift-a,
+  .drift-b {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}

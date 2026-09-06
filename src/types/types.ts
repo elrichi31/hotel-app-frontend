@@ -13,6 +13,13 @@ export interface Room {
     estado: 'Libre' | 'Ocupado';
     descripcion: string;
     numero_camas: number;
+    capacidad: number;
+    wifi: boolean;
+    tipo_cama: 'Una plaza' | 'Dos plazas';
+    tv_cable: boolean;
+    mesa_trabajo: boolean;
+    bano_privado: boolean;
+    amenidades: string[];
     precios: RoomPrecio[];
 }
 
