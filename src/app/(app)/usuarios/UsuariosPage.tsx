@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   User as UserIcon,
   Tag,
+  BellRing,
 } from 'lucide-react';
 import UserService from '@/services/UsersService';
 import { useRouter } from 'next/navigation';
@@ -200,6 +201,23 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
       onFilter: (value, record) => record.status === value,
       render: (status: string) => (
         <StatusPill color={status === 'activo' ? viz.positive : viz.negative} label={status === 'activo' ? 'Activo' : 'Inactivo'} />
+      ),
+    },
+    {
+      title: <ColumnHeader icon={<BellRing size={13} />}>Avisos de reservas</ColumnHeader>,
+      dataIndex: 'notificar_reservas',
+      key: 'notificar_reservas',
+      align: 'center',
+      width: 130,
+      filters: [
+        { text: 'Recibe avisos', value: 'si' },
+        { text: 'No recibe', value: 'no' },
+      ],
+      onFilter: (value, record) => (value === 'si' ? !!record.notificar_reservas : !record.notificar_reservas),
+      render: (notificar: boolean) => (
+        <Tooltip title={notificar ? 'Recibe correo cuando se crea una reserva' : 'No recibe avisos de nuevas reservas'}>
+          <BellRing size={15} color={notificar ? viz.series1 : notion.inkFaint} style={{ opacity: notificar ? 1 : 0.5 }} />
+        </Tooltip>
       ),
     },
     {

@@ -56,4 +56,5 @@ export interface User {
     token: string;
     role: string;
     status: string;
+    notificar_reservas?: boolean;
 }
