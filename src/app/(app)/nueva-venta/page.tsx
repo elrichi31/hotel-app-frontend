@@ -1,23 +1,19 @@
 import React from 'react';
 import { Metadata } from 'next';
-import CollapseView from '@/views/CollapseView';
+import VentaWizard from '@/views/VentaWizard';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 
 export const metadata: Metadata = {
-    title: 'Registro de cliente',
-    description: 'Dashboard page',
+    title: 'Nueva venta',
+    description: 'Registro de cliente y alta de venta',
 }
 
-const RegisterClientPage = async () => {
+const NuevaVentaPage = async () => {
     const session = await getServerSession(authOptions);
     const token = session?.user?.token.token;
 
-    return (
-        <div>
-            <CollapseView token={token || ''} />
-        </div>
-    );
+    return <VentaWizard token={token || ''} />;
 };
 
-export default RegisterClientPage;
+export default NuevaVentaPage;

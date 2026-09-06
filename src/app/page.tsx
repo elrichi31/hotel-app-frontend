@@ -2,12 +2,12 @@
 import React, { useState } from "react";
 import { Layout, Button, Menu, Row, Col, Card, Typography, Divider, Drawer } from "antd";
 import {
-  CalendarOutlined,
-  BarChartOutlined,
-  UserOutlined,
-  CheckCircleOutlined,
-  MenuOutlined,
-} from "@ant-design/icons";
+  Calendar,
+  BarChart3,
+  User,
+  CheckCircle2,
+  Menu as MenuIcon,
+} from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -66,7 +66,7 @@ const PaginaPrincipal: React.FC = () => {
           </div>
           {/* Menú hamburguesa para dispositivos móviles */}
           <div className="md:hidden">
-            <Button type="text" icon={<MenuOutlined />} onClick={toggleDrawer} />
+            <Button type="text" icon={<MenuIcon />} onClick={toggleDrawer} />
           </div>
         </div>
       </Header>
@@ -129,7 +129,7 @@ const PaginaPrincipal: React.FC = () => {
             <Row gutter={[24, 24]}>
               <Col xs={24} md={8}>
                 <Card hoverable>
-                  <CalendarOutlined className="text-primary text-4xl mb-4" />
+                  <Calendar size={36} className="text-primary mb-4" />
                   <Title level={3}>Gestión Inteligente de Reservas</Title>
                   <Paragraph>
                     Administra fácilmente reservas, asignaciones de habitaciones y check-ins/check-outs con nuestra interfaz intuitiva.
@@ -138,7 +138,7 @@ const PaginaPrincipal: React.FC = () => {
               </Col>
               <Col xs={24} md={8}>
                 <Card hoverable>
-                  <UserOutlined className="text-primary text-4xl mb-4" />
+                  <User size={36} className="text-primary mb-4" />
                   <Title level={3}>Gestión de Relaciones con Huéspedes</Title>
                   <Paragraph>
                     Construye relaciones duraderas con los huéspedes mediante experiencias personalizadas y herramientas de comunicación.
@@ -147,7 +147,7 @@ const PaginaPrincipal: React.FC = () => {
               </Col>
               <Col xs={24} md={8}>
                 <Card hoverable>
-                  <BarChartOutlined className="text-primary text-4xl mb-4" />
+                  <BarChart3 size={36} className="text-primary mb-4" />
                   <Title level={3}>Analíticas en Tiempo Real</Title>
                   <Paragraph>
                     Toma decisiones basadas en datos con informes completos sobre ocupación, ingresos y satisfacción de huéspedes.
@@ -173,15 +173,15 @@ const PaginaPrincipal: React.FC = () => {
                   <Title level={2}>$49/mes</Title>
                   <ul>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Hasta 20 habitaciones
                     </li>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Reportes básicos
                     </li>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Soporte por correo
                     </li>
                   </ul>
@@ -195,15 +195,15 @@ const PaginaPrincipal: React.FC = () => {
                   <Title level={2}>$99/mes</Title>
                   <ul>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Hasta 100 habitaciones
                     </li>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Analíticas avanzadas
                     </li>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Soporte telefónico 24/7
                     </li>
                   </ul>
@@ -217,15 +217,15 @@ const PaginaPrincipal: React.FC = () => {
                   <Title level={2}>Personalizado</Title>
                   <ul>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Habitaciones ilimitadas
                     </li>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Integraciones personalizadas
                     </li>
                     <li>
-                      <CheckCircleOutlined className="text-primary mr-2" />
+                      <CheckCircle2 size={16} className="text-primary mr-2" />
                       Gestor de cuentas dedicado
                     </li>
                   </ul>

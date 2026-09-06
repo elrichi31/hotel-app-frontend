@@ -1,13 +1,19 @@
 // types.ts
 
+export interface RoomPrecio {
+    id: number;
+    numero_personas: number;
+    precio: number;
+}
+
 export interface Room {
     id: number;
-    numero: number;
+    numero: string;
     tipo: string;
-    precio: number;
     estado: 'Libre' | 'Ocupado';
     descripcion: string;
     numero_camas: number;
+    precios: RoomPrecio[];
 }
 
 export interface ApiResponse<T> {
@@ -24,13 +30,14 @@ export interface Client {
     numero_documento: string;
     ciudadania: string;
     procedencia: string
-    isNew: boolean;
+    isNew?: boolean;
 }
 
 export interface ReservaData {
     nombre: string;
     apellido: string;
-    email: string; 
+    email: string;
+    telefono: string;
     fecha_inicio: string;
     fecha_fin: string;
     habitaciones: string[];

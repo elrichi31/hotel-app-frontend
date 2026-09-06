@@ -1,48 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, message, DatePicker, InputNumber } from 'antd';
-import SelectRoomCard from '@/components/SelectRoomCard';
+import { RoomPicker } from '@/components/RoomPicker';
 import RoomService from '@/services/RoomService';
 import dayjs from 'dayjs';
 import VentasService from '@/services/VentasService';
-import type { DatePickerProps } from 'antd';
 import { useRouter } from 'next/navigation';
+import { notion } from '@/lib/theme';
+import { money } from '@/lib/format';
+import { Section } from '@/components/ui/Section';
+import type { Room } from '@/types/types';
 const { RangePicker } = DatePicker;
 const { Item } = Form;
-
-const formatDate = (date: any) => {
-    if (!date) return '';
-    const months = [
-        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
-    const day = date.date();
-    const month = months[date.month()];
-    const year = date.year();
-    const hours = date.hour();
-    const minutes = date.minute().toString().padStart(2, '0');
-    return `${day} de ${month} ${year} ${hours}:${minutes}`;
-};
 
 const VentaForm = ({ personIds, initialVenta, idVenta, token }: any) => {
     const [form] = Form.useForm();
     const router = useRouter();
     const [selectedCards, setSelectedCards] = useState<{ id: string, price: number, priceId: number }[]>([]);
-    const [rooms, setRooms] = useState<any[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
     const [subtotal, setSubtotal] = useState<number>(0);
     const [total, setTotal] = useState<number>(0);
     const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs | null] | null>(null);
-    const [discount, setDiscount] = useState<number>(0); // Valor predeterminado de 0 para el descuento
-    const [loading, setLoading] = useState<boolean>(false); // Estado para el botón de enviar
+    const [discount, setDiscount] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
         if (initialVenta) {
-            const { fecha_inicio, fecha_fin, descuento, subtotal, total, precios } = initialVenta;
+            const { fecha_inicio, fecha_fin, descuento, precios } = initialVenta;
             setDates([dayjs(fecha_inicio), dayjs(fecha_fin)]);
             setDiscount(parseFloat(descuento));
-            setSubtotal(parseFloat(subtotal));
-            setTotal(parseFloat(total));
             setSelectedCards(precios.map((precio: any) => ({
-                id: precio.habitacion_id,
+                // Los ids se comparan como texto en todo el formulario (ver handleCardChange);
+                // sin este String() la venta precargada nunca se podía deseleccionar.
+                id: String(precio.habitacion_id),
                 price: parseFloat(precio.precio),
                 priceId: precio.id
             })));
@@ -69,154 +58,167 @@ const VentaForm = ({ personIds, initialVenta, idVenta, token }: any) => {
     }, []);
 
     useEffect(() => {
-        const calculateTotal = () => {
-            if (!dates || selectedCards.length === 0) {
-                setSubtotal(0);
-                setTotal(0);
-                return;
-            }
-
-            const [startDate, endDate] = dates;
-            const nights = endDate ? endDate.startOf('day').diff(startDate.startOf('day'), 'day') : 0;
-
-            const subtotalAmount = selectedCards.reduce((sum, card) => {
-                return sum + (card.price * nights);
-            }, 0);
-
-            const totalWithDiscount = subtotalAmount - discount;
-            setSubtotal(subtotalAmount);
-            setTotal(totalWithDiscount > 0 ? totalWithDiscount : 0);
-        };
-
-        calculateTotal();
+        if (!dates || selectedCards.length === 0) {
+            setSubtotal(0);
+            setTotal(0);
+            return;
+        }
+        const [startDate, endDate] = dates;
+        const nights = endDate ? endDate.startOf('day').diff(startDate.startOf('day'), 'day') : 0;
+        const subtotalAmount = selectedCards.reduce((sum, card) => sum + card.price * nights, 0);
+        const totalWithDiscount = subtotalAmount - discount;
+        setSubtotal(subtotalAmount);
+        setTotal(totalWithDiscount > 0 ? totalWithDiscount : 0);
     }, [selectedCards, dates, discount]);
 
-    const handleCardChange = (cardId: string, price: number | null, priceId: number | null) => {
+    /** Selecciona/deselecciona una habitación, o cambia su tarifa si ya está elegida. */
+    const handleCardChange = (cardId: number, price: number | null, priceId: number | null) => {
         if (price === null && priceId === null) {
-            setSelectedCards((prev) => prev.filter((card) => card.id !== cardId)); // Deseleccionar la tarjeta
+            setSelectedCards((prev) => prev.filter((card) => card.id !== String(cardId)));
         } else {
-            setSelectedCards((prev: any) => {
-                const existingCard = prev.find((card: any) => card.id === cardId);
+            setSelectedCards((prev) => {
+                const existingCard = prev.find((card) => card.id === String(cardId));
                 if (existingCard) {
-                    return prev.map((card: any) => card.id === cardId ? { ...card, price, priceId } : card);
-                } else {
-                    return [...prev, { id: cardId, price: price!, priceId: priceId! }];
+                    return prev.map((card) => (card.id === String(cardId) ? { ...card, price: price!, priceId: priceId! } : card));
                 }
+                return [...prev, { id: String(cardId), price: price!, priceId: priceId! }];
             });
         }
     };
 
     const handleDateChange = (dates: any) => {
-        if (dates) {
-            setDates([dates[0], dates[1]]);
-        } else {
-            setDates(null);
-        }
+        setDates(dates ? [dates[0], dates[1]] : null);
     };
 
-    const disabledDate = (current: any) => {
-        return current && current < dayjs().startOf('day');
-    };
+    const disabledDate = (current: any) => current && current < dayjs().startOf('day');
 
     const handleTodayClick = () => {
         const now = dayjs();
-        setDates([now, dayjs().hour(15).minute(0)]);
-        form.setFieldsValue({
-            rangoFechas: [now, dayjs().hour(15).minute(0)]
-        });
+        const salida = dayjs().hour(15).minute(0);
+        setDates([now, salida]);
+        form.setFieldsValue({ rangoFechas: [now, salida] });
     };
 
-    const handleSubmit = async (values: any) => {
+    const handleSubmit = async () => {
         if (selectedCards.length === 0) {
             message.warning('Por favor selecciona al menos una habitación.');
             return;
         }
-        
-        if(personIds.length === 0) {
+        if (personIds.length === 0) {
             message.warning('Por favor ingresa al menos un cliente');
             return;
         }
-        const habitaciones = selectedCards.map(card => card.id);
+
+        // Los ids se manejan como texto dentro del formulario (ver handleCardChange);
+        // el payload sale numérico, como espera el backend.
+        const habitaciones = selectedCards.map((card) => Number(card.id));
         const precios = selectedCards.reduce((acc, card) => {
-            acc[card.id] = card.priceId;
+            acc[Number(card.id)] = card.priceId;
             return acc;
-        }, {} as Record<string, number>);
+        }, {} as Record<number, number>);
 
         const fecha_inicio = dates ? dates[0].format('YYYY-MM-DD HH:mm') : null;
         const fecha_fin = dates && dates[1] ? dates[1].format('YYYY-MM-DD HH:mm') : null;
 
         const newValues = { habitaciones, precios, fecha_inicio, fecha_fin, subtotal, total, descuento: discount, personas: personIds };
-        if (token) {
-            setLoading(true);
-            console.log('newValues:', newValues); 
-            try {
-                if(initialVenta){
-                    await VentasService.updateVenta(token, idVenta , newValues);
-                    message.success('Venta actualizada exitosamente 🎉');
-                    router.push('/ventas');
-                } else {
-                    await VentasService.createVenta(token, newValues);
-                    message.success('Venta creada exitosamente 🎉');
-                    router.push('/ventas');
-                }
-            } catch (error) {
-                console.error('Error creating venta:', error);
-                message.error('Error al crear la venta');
-            } finally {
-                setLoading(false);
+        if (!token) return;
+
+        setLoading(true);
+        try {
+            if (initialVenta) {
+                await VentasService.updateVenta(token, idVenta, newValues);
+                message.success('Venta actualizada exitosamente 🎉');
+            } else {
+                await VentasService.createVenta(token, newValues);
+                message.success('Venta creada exitosamente 🎉');
             }
+            router.push('/ventas');
+        } catch (error) {
+            console.error('Error creating venta:', error);
+            message.error('Error al guardar la venta');
+        } finally {
+            setLoading(false);
         }
     };
 
+    const nights =
+        dates && dates[1] ? dates[1].startOf('day').diff(dates[0].startOf('day'), 'day') : 0;
+
     return (
-        <Form layout="vertical" onFinish={handleSubmit} style={{ width: "95%", margin: 'auto' }} form={form}>
-            <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
-                <h2 className="mt-4 mb-2 text-lg">Datos para el ingreso</h2>
-                <Item name="rangoFechas" label="Rango de Fechas" rules={[{ required: true, message: 'Por favor ingrese el rango de fechas' }]} className='w-full'>
-                    <RangePicker 
-                        showTime={{ format: 'HH:mm' }} 
-                        size={"middle"} 
-                        className='w-full' 
-                        format={formatDate as DatePickerProps['format']} 
-                        onChange={handleDateChange} 
+        <Form layout="vertical" onFinish={handleSubmit} form={form}>
+            <Section title="Fechas de la estancia">
+                <Item name="rangoFechas" rules={[{ required: true, message: 'Por favor ingresa el rango de fechas' }]} style={{ marginBottom: 0 }}>
+                    <RangePicker
+                        showTime={{
+                            format: 'HH:mm',
+                            // Check-in 2pm / check-out 11am por defecto: el usuario igual puede cambiarlas a mano.
+                            defaultValue: [dayjs().hour(14).minute(0).second(0), dayjs().hour(11).minute(0).second(0)],
+                        }}
+                        format="DD/MM/YYYY HH:mm"
+                        style={{ width: '100%' }}
+                        onChange={handleDateChange}
                         disabledDate={disabledDate}
                         renderExtraFooter={() => (
-                            <Button type="link" onClick={handleTodayClick}>
-                                Hoy
+                            <Button type="link" onClick={handleTodayClick} style={{ padding: 0 }}>
+                                Entrada hoy a las 15:00
                             </Button>
                         )}
                     />
                 </Item>
+                {nights > 0 && (
+                    <div style={{ marginTop: 8, fontSize: 12.5, color: notion.inkMuted }}>
+                        {nights} {nights === 1 ? 'noche' : 'noches'}
+                    </div>
+                )}
+            </Section>
 
-                <h2 className="mt-4 mb-2 text-lg">Seleccionar habitaciones</h2>
-                <div className='flex flex-wrap gap-3 mb-8 justify-center'>
-                    {rooms.map((room) => (
-                        <div key={room.id} className='flex flex-col items-center'>
-                            <SelectRoomCard
-                                room={room}
-                                onSelect={(price: number, priceId: number) => handleCardChange(room.id, price, priceId)}
-                                isSelected={selectedCards.some(card => card.id === room.id)}
-                                precios={initialVenta?.precios}
-                            />
-                        </div>
-                    ))}
-                </div>
+            <Section title="Habitaciones">
+                <RoomPicker
+                    rooms={rooms}
+                    selected={selectedCards}
+                    onToggle={(room, price, priceId) => handleCardChange(room.id, price, priceId)}
+                    onPriceChange={(roomId, price, priceId) => handleCardChange(Number(roomId), price, priceId)}
+                />
+            </Section>
 
-                <Item name="discount" label="Descuento" layout='horizontal'>
-                    <InputNumber min={0} onChange={(value) => setDiscount(value ?? 0)} />
+            <Section title="Resumen">
+                <Item name="discount" label="Descuento" style={{ maxWidth: 220 }}>
+                    <InputNumber
+                        min={0}
+                        style={{ width: '100%' }}
+                        onChange={(value) => setDiscount(value ?? 0)}
+                    />
                 </Item>
 
-                <div>
-                    <p>Subtotal: ${subtotal.toFixed(2)}</p>
-                    <p>Total: ${total.toFixed(2)}</p>
+                <div
+                    style={{
+                        display: 'flex',
+                        gap: 32,
+                        padding: '12px 0',
+                        borderTop: `1px solid ${notion.divider}`,
+                        marginTop: 4,
+                    }}
+                >
+                    <div>
+                        <div style={{ fontSize: 12.5, color: notion.inkMuted }}>Subtotal</div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: notion.ink, marginTop: 2 }}>
+                            {money(subtotal, 2)}
+                        </div>
+                    </div>
+                    <div>
+                        <div style={{ fontSize: 12.5, color: notion.inkMuted }}>Total</div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: notion.ink, marginTop: 2 }}>
+                            {money(total, 2)}
+                        </div>
+                    </div>
                 </div>
 
-                <Item>
+                <Item style={{ marginTop: 16, marginBottom: 0 }}>
                     <Button type="primary" htmlType="submit" block loading={loading}>
-                        Enviar
+                        {initialVenta ? 'Guardar cambios' : 'Registrar venta'}
                     </Button>
                 </Item>
-            </div>
+            </Section>
         </Form>
     );
 };

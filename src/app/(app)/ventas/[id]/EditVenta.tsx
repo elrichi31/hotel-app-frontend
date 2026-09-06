@@ -1,14 +1,17 @@
 "use client"
 import React, { useEffect, useState } from 'react';
+import { Spin, Alert } from 'antd';
 import ClientForm from '@/components/ClientForm';
 import VentasService from '@/services/VentasService';
 import VentaForm from '@/components/VentaForm';
+import { PageHeader } from '@/components/ui/PageHeader';
+import type { Client } from '@/types/types';
 
 export default function EditVenta({ params, token }: any) {
   const [venta, setVenta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clientIds, setClientIds] = useState<number[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
 
   useEffect(() => {
     if (token) {
@@ -16,6 +19,7 @@ export default function EditVenta({ params, token }: any) {
         try {
           const ventaData = await VentasService.getVenta(params.id, token);
           setVenta(ventaData);
+          setClients(ventaData.personas ?? []);
           setLoading(false);
         } catch (error) {
           setError('Error al obtener la venta');
@@ -27,22 +31,22 @@ export default function EditVenta({ params, token }: any) {
   }, [params.id]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spin size="large" />
+      </div>
+    );
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <Alert message="Error" description={error} type="error" showIcon />;
   }
 
-  const updateClientIds = (newClientIds: number[]) => {
-    setClientIds(newClientIds);
-};
-
   return (
-    <div>
-      <h1 className='text-xl mb-3'>Editar venta {params.id}</h1>
-      <ClientForm personas={venta.personas} updateClientIds={updateClientIds} token={token}/>
-      <VentaForm initialVenta={venta} personIds={clientIds} idVenta={params.id} token={token}/>
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <PageHeader title={`Editar venta #${params.id}`} />
+      <ClientForm clients={clients} onChange={setClients} token={token} />
+      <VentaForm initialVenta={venta} personIds={clients.map((c) => c.id)} idVenta={params.id} token={token} />
     </div>
   );
 }

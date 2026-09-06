@@ -1,7 +1,7 @@
 'use client'
 import React from 'react';
 import { Card, message, Popconfirm } from 'antd';
-import { EditOutlined, CloseOutlined, DiffOutlined } from '@ant-design/icons';
+import { Pencil, X, Receipt } from 'lucide-react';
 import Link from 'next/link';
 
 const VentaDetails = ({ venta, onDelete }: any) => {
@@ -16,19 +16,19 @@ const VentaDetails = ({ venta, onDelete }: any) => {
 
   const eliminar = (
     <Popconfirm title="¿Estás seguro de eliminar esta venta?" okText="Sí" cancelText="No" onConfirm={popConfirm}>
-      <CloseOutlined />
+      <X size={16} />
     </Popconfirm>
   );
 
   const editar = (
     <Link href={`/ventas/${venta.id}`}>
-      <EditOutlined />
+      <Pencil size={16} />
     </Link>
   );
 
   const factura = (
     <Link href={`/ventas/facturas/${venta.id}`}>
-      <DiffOutlined />
+      <Receipt size={16} />
     </Link>
   );
 

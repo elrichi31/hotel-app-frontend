@@ -2,9 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import FacturasService from '@/services/FacturasService';
 import CardFactura from '@/components/FacturaCard';
-import { PlusCircleOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import FacturaModal from '@/components/FacturaModal';
-import { Button, message } from 'antd';
+import { Button, Empty, Spin, Alert, message } from 'antd';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function FacturasVenta({ params, token }: any) {
     const [facturas, setFacturas] = useState<any[]>([]);
@@ -17,114 +18,75 @@ export default function FacturasVenta({ params, token }: any) {
             try {
                 if (token) {
                     const data = await FacturasService.getFacturasByVenta(params.id, token);
-                    console.log(data);
-                    if (Array.isArray(data)) {
-                        setFacturas(data);
-                    }
+                    if (Array.isArray(data)) setFacturas(data);
                 }
             } catch (error: any) {
-                setError(error.message || 'Unexpected error');
+                setError(error.message || 'Error al obtener las facturas');
                 setFacturas([]);
             } finally {
                 setLoading(false);
             }
         };
-
         fetchFacturas();
-    }, [params.id]);
-
-    if (loading) {
-        return <div>Loading...</div>;
-    }
-
-    if (error) {
-        return <div>Error: {error}</div>;
-    }
-
-    const showModal = () => {
-        setIsModalOpen(true);
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-    };
+    }, [params.id, token]);
 
     const handleOk = async (values: any) => {
         try {
-            if (token) {
-                const val = { ...values, venta_id: params.id, estado: 'guardado' };
-                console.log(val, token);
-                const newFactura = await FacturasService.createFactura(token, val);
-
-                if (newFactura && typeof newFactura === 'object') {
-                    setFacturas([...facturas, newFactura]);
-                    message.success('Factura creada exitosamente');
-                    setIsModalOpen(false);
-                } else {
-                    throw new Error('Factura creada inválida');
-                }
+            const val = { ...values, venta_id: params.id, estado: 'guardado' };
+            const newFactura = await FacturasService.createFactura(token, val);
+            if (newFactura && typeof newFactura === 'object') {
+                setFacturas((prev) => [...prev, newFactura]);
+                message.success('Factura creada exitosamente');
+                setIsModalOpen(false);
+            } else {
+                throw new Error('Factura creada inválida');
             }
         } catch (error: any) {
-            console.error('Error creando factura:', error);
-            if (error.response && error.response.data && error.response.data.message) {
-                message.error(error.response.data.message);
-            } else {
-                message.error('Error al crear la factura');
-            }
+            message.error(error.response?.data?.message || 'Error al crear la factura');
         }
     };
 
-    // Función para actualizar una factura existente en el estado
     const updateFactura = (updatedFactura: any) => {
-        setFacturas((prevFacturas) =>
-            prevFacturas.map((factura) =>
-                factura.id === updatedFactura.id ? updatedFactura : factura
-            )
-        );
+        setFacturas((prev) => prev.map((f) => (f.id === updatedFactura.id ? updatedFactura : f)));
     };
 
-    // Función para eliminar una factura del estado
-    const deleteFactura = (facturaId: number) => {
-        setFacturas((prevFacturas) => prevFacturas.filter((factura) => factura.id !== facturaId));
-        message.success('Factura eliminada exitosamente');
-    };
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <Spin size="large" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return <Alert message="Error" description={error} type="error" showIcon />;
+    }
 
     return (
-        <div>
-            <h1 className='text-lg font-bold'>Facturas para Venta {params.id}</h1>
-            <div>
-                {facturas.length > 0 ? (
-                    <div>
-                        <div className='flex flex-wrap space-x-0 lg:space-x-5'>
-                            {facturas.map((factura) => (
-                                <CardFactura
-                                    key={factura.id}
-                                    factura={factura}
-                                    onUpdate={updateFactura} // Pasa la función de actualización
-                                    token={token}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <p>No hay facturas para esta venta.</p>
-                )}
-                <Button
-                    className='flex-col'
-                    onClick={showModal}
-                    style={{ height: '250px', width: '250px' }}
-                >
-                    <PlusCircleOutlined style={{ fontSize: "20px" }} className='mx-10' />
-                    Crear factura
-                </Button>
-                <FacturaModal
-                    open={isModalOpen}
-                    onCancel={handleCancel}
-                    onOk={handleOk}
-                    factura={null}
-                    edit={false}
-                />
-            </div>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+            <PageHeader
+                title={`Facturas de la venta #${params.id}`}
+                subtitle={`${facturas.length} factura${facturas.length === 1 ? '' : 's'}`}
+                action={
+                    <Button type="primary" icon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>
+                        Crear factura
+                    </Button>
+                }
+            />
+
+            {facturas.length === 0 ? (
+                <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 12, padding: '48px 16px' }}>
+                    <Empty description="No hay facturas para esta venta" />
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    {facturas.map((factura) => (
+                        <CardFactura key={factura.id} factura={factura} onUpdate={updateFactura} token={token} />
+                    ))}
+                </div>
+            )}
+
+            <FacturaModal open={isModalOpen} onCancel={() => setIsModalOpen(false)} onOk={handleOk} factura={null} edit={false} />
         </div>
     );
 }

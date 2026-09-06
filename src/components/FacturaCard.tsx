@@ -1,30 +1,55 @@
 import React, { useState } from 'react';
-import { Card, message, Popconfirm, Typography, Button, Badge, Divider } from 'antd';
-import { CloseOutlined, EditOutlined, PrinterOutlined, UserOutlined, EnvironmentOutlined, PhoneOutlined, MailOutlined, FileTextOutlined, CalendarOutlined, DollarOutlined, CreditCardOutlined } from '@ant-design/icons';
+import { message, Popconfirm, Button, Avatar } from 'antd';
+import {
+  X,
+  Pencil,
+  Printer,
+  FileDown,
+  FileText,
+  IdCard,
+  MapPin,
+  Phone,
+  Mail,
+  Calendar,
+  Wallet,
+  CreditCard,
+  Landmark,
+  User,
+  Percent,
+} from 'lucide-react';
 import FacturaModal from './FacturaModal';
 import FacturasService from '@/services/FacturasService';
-import dayjs from 'dayjs';
-import { authOptions } from '@/lib/authOptions';
+import { notion, viz } from '@/lib/theme';
+import { money, shortDate } from '@/lib/format';
+import { facturaEstadoColor, facturaEstadoLabel, EstadoFactura } from '@/lib/estados';
 
-const { Title, Text } = Typography;
+interface ProductoFactura {
+  id: number;
+  cantidad: number;
+  descripcion: string;
+  precio_unitario: number;
+}
 
 interface Factura {
   id: number;
+  numero_factura: string;
   nombre: string;
   apellido: string;
   identificacion: string;
   direccion: string;
   telefono?: string;
   correo: string;
-  numero_factura: string;
   fecha_emision: string;
   subtotal: number;
   descuento: number;
+  porcentaje_iva?: number;
+  impuesto: number;
   total: number;
   forma_pago: string;
   observaciones?: string;
-  estado: string;
+  estado: EstadoFactura;
   venta_id: number;
+  productos?: ProductoFactura[];
 }
 
 interface CardFacturaProps {
@@ -33,30 +58,64 @@ interface CardFacturaProps {
   token: string;
 }
 
-const getStatusColor = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'anulado':
-      return 'red';
-    case 'emitido':
-      return 'green';
-    case 'guardado':
-      return 'blue';
-    default:
-      return 'gray';
-  }
+const PAGO_ICON: Record<string, React.ReactNode> = {
+  efectivo: <Wallet size={13} />,
+  tarjeta: <CreditCard size={13} />,
+  transferencia: <Landmark size={13} />,
 };
+
+/** Chip de estado con fondo tintado: más presencia que un punto suelto. */
+const EstadoPill = ({ estado }: { estado: EstadoFactura }) => {
+  const color = facturaEstadoColor[estado];
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 10px',
+        borderRadius: 999,
+        background: `${color}1f`,
+        color,
+        fontSize: 12.5,
+        fontWeight: 600,
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: 3, background: color }} />
+      {facturaEstadoLabel[estado]}
+    </span>
+  );
+};
+
+/** Título de sección con un ícono muted delante, mismo tratamiento en las tres. */
+const SectionLabel = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
+  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: notion.inkMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+    <span style={{ fontSize: 13, display: 'inline-flex' }}>{icon}</span>
+    {children}
+  </div>
+);
+
+/** Fila etiqueta/valor con un ícono muted a la izquierda del texto. */
+const Row = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) => (
+  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '7px 0' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: notion.inkFaint, fontSize: 13 }}>
+      <span style={{ fontSize: 13, display: 'inline-flex' }}>{icon}</span>
+      {label}
+    </span>
+    <span style={{ color: notion.ink, fontSize: 13, fontWeight: 500, textAlign: 'right' }}>{value}</span>
+  </div>
+);
 
 const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const color = facturaEstadoColor[factura.estado];
+  const initials = `${factura.nombre?.[0] ?? ''}${factura.apellido?.[0] ?? ''}`.toUpperCase();
 
   const handleEmitir = async () => {
     try {
-      if (token) {
-        const updatedFactura = { ...factura, estado: 'emitido' };
-        const response = await FacturasService.updateFactura(token, factura.id, updatedFactura);
-        onUpdate(response);
-        message.success('Factura emitida exitosamente');
-      }
+      const updated = await FacturasService.updateFactura(token, factura.id, { ...factura, estado: 'emitido' });
+      onUpdate(updated);
+      message.success('Factura emitida');
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Error al emitir la factura');
     }
@@ -64,107 +123,193 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) =
 
   const handleAnular = async () => {
     try {
-      if (token) {
-        const updatedFactura = { ...factura, estado: 'anulado' };
-        const response = await FacturasService.updateFactura(token, factura.id, updatedFactura);
-        onUpdate(response);
-        message.success('Factura anulada exitosamente');
-      }
+      const updated = await FacturasService.updateFactura(token, factura.id, { ...factura, estado: 'anulado' });
+      onUpdate(updated);
+      message.success('Factura anulada');
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Error al anular la factura');
     }
   };
 
-  const showModal = () => {
-    setIsModalOpen(true);
-  };
-
   const handleOk = async (values: any) => {
     try {
-      if (token) {
-        const updatedFactura = await FacturasService.updateFactura(token, factura.id, values);
-        message.success('Factura actualizada exitosamente');
-        setIsModalOpen(false);
-        onUpdate(updatedFactura);
-      }
+      const updated = await FacturasService.updateFactura(token, factura.id, values);
+      message.success('Factura actualizada');
+      setIsModalOpen(false);
+      onUpdate(updated);
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Error al actualizar la factura');
     }
   };
 
   return (
-    <Card className="w-[350px]" style={{ marginBottom: "20px", marginTop: "20px" }}>
-      <div className="flex justify-between items-center mb-4">
-        <Title level={4} style={{ marginBottom: 0 }}>Factura #{factura.id}</Title>
-        <Badge color={getStatusColor(factura.estado)} text={factura.estado.toUpperCase()} />
-      </div>
+    <div
+      style={{
+        width: 340,
+        background: notion.cardBg,
+        border: `1px solid ${notion.divider}`,
+        borderRadius: 16,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Acento de 4px arriba: el color del estado se ve antes de leer nada */}
+      <div style={{ height: 4, background: color }} />
 
-      <Divider />
-
-      <section>
-        <Title level={5}>Información del Cliente</Title>
-        <div className="flex flex-col gap-1">
-          <InfoItem icon={<UserOutlined />} label="Nombre" value={`${factura.nombre} ${factura.apellido}`} />
-          <InfoItem icon={<FileTextOutlined />} label="Identificación" value={factura.identificacion} />
-          <InfoItem icon={<EnvironmentOutlined />} label="Dirección" value={factura.direccion} />
-          <InfoItem icon={<PhoneOutlined />} label="Teléfono" value={factura.telefono || 'No proporcionado'} />
-          <InfoItem icon={<MailOutlined />} label="Correo" value={factura.correo} />
+      <div style={{ padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: `${color}1f`,
+                color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 16,
+                flexShrink: 0,
+              }}
+            >
+              <FileText size={16} />
+            </span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: notion.ink }}>
+              Factura {factura.numero_factura ?? `#${factura.id}`}
+            </span>
+          </div>
+          <EstadoPill estado={factura.estado} />
         </div>
-      </section>
 
-      <Divider />
-
-      <section>
-        <Title level={5}>Detalles de la Factura</Title>
-        <div className="flex flex-col gap-1">
-          <InfoItem icon={<CalendarOutlined />} label="Fecha de Emisión" value={dayjs(factura.fecha_emision).format('DD-MM-YYYY HH:mm')} />
-          <InfoItem icon={<CreditCardOutlined />} label="Forma de Pago" value={factura.forma_pago} />
-          <InfoItem icon={<DollarOutlined />} label="Subtotal" value={`$${factura.subtotal}`} />
-          <InfoItem icon={<DollarOutlined />} label="Descuento" value={`$${factura.descuento}`} />
-          <InfoItem icon={<DollarOutlined />} label="Total" value={`$${factura.total}`} />
+        {/* El total como cifra hero, en su propio bloque tintado */}
+        <div
+          style={{
+            marginTop: 16,
+            padding: '14px 16px',
+            borderRadius: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: `1px solid ${notion.divider}`,
+          }}
+        >
+          <div style={{ fontSize: 11.5, color: notion.inkFaint, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            Total a pagar
+          </div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: notion.ink, marginTop: 4, lineHeight: 1.1 }}>
+            {money(factura.total, 2)}
+          </div>
+          <div style={{ fontSize: 12, color: notion.inkMuted, marginTop: 4 }}>
+            {money(factura.subtotal, 2)} subtotal
+            {factura.descuento > 0 && (
+              <> · <span style={{ color: viz.positive }}>-{money(factura.descuento, 2)} descuento</span></>
+            )}
+            {factura.impuesto > 0 && <> · +{money(factura.impuesto, 2)} IVA</>}
+          </div>
         </div>
-      </section>
 
-      <Divider />
+        <div style={{ marginTop: 18, marginBottom: 8 }}>
+          <SectionLabel icon={<User size={13} />}>Cliente</SectionLabel>
+        </div>
 
-      <section>
-        <Title level={5}>Observaciones</Title>
-        <Text>{factura.observaciones || 'No hay observaciones'}</Text>
-      </section>
+        {/* Perfil del cliente: mismo patrón de avatar que la tabla de Usuarios */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <Avatar shape="square" size={30} style={{ background: viz.series1, fontSize: 12, flexShrink: 0 }}>
+            {initials || '?'}
+          </Avatar>
+          <span style={{ fontSize: 14, fontWeight: 500, color: notion.ink }}>
+            {factura.nombre} {factura.apellido}
+          </span>
+        </div>
 
-      <Divider />
+        <div style={{ borderTop: `1px solid ${notion.divider}` }}>
+          <Row icon={<IdCard size={13} />} label="Identificación" value={factura.identificacion} />
+          <Row icon={<MapPin size={13} />} label="Dirección" value={factura.direccion} />
+          <Row icon={<Phone size={13} />} label="Teléfono" value={factura.telefono || '—'} />
+          <Row icon={<Mail size={13} />} label="Correo" value={factura.correo} />
+        </div>
 
-      <div className="flex space-x-3 mt-4">
-        {factura.estado === 'guardado' && (
+        <div style={{ marginTop: 14, marginBottom: 8 }}>
+          <SectionLabel icon={<Calendar size={13} />}>Detalles</SectionLabel>
+        </div>
+        <div style={{ borderTop: `1px solid ${notion.divider}` }}>
+          <Row icon={<Calendar size={13} />} label="Fecha de emisión" value={shortDate(factura.fecha_emision)} />
+          <Row
+            icon={PAGO_ICON[factura.forma_pago] ?? <CreditCard size={13} />}
+            label="Forma de pago"
+            value={factura.forma_pago}
+          />
+        </div>
+
+        {factura.productos && factura.productos.length > 0 && (
           <>
-            <Button type="link" icon={<EditOutlined />} onClick={showModal} style={{ color: 'blue' }}>
-              Editar
-            </Button>
-            <Button type="link" icon={<PrinterOutlined />} onClick={handleEmitir} style={{ color: 'green' }}>
-              Emitir Factura
-            </Button>
+            <div style={{ marginTop: 14, marginBottom: 8 }}>
+              <SectionLabel icon={<FileText size={13} />}>Productos</SectionLabel>
+            </div>
+            <div style={{ borderTop: `1px solid ${notion.divider}` }}>
+              {factura.productos.map((p) => (
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 13 }}>
+                  <span style={{ color: notion.ink }}>
+                    {p.cantidad}× {p.descripcion}
+                  </span>
+                  <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
+                    {money(p.cantidad * p.precio_unitario, 2)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </>
         )}
-        {factura.estado === 'emitido' && (
-          <Popconfirm title="¿Estás seguro de anular esta factura?" okText="Sí" cancelText="No" onConfirm={handleAnular}>
-            <Button type="link" icon={<CloseOutlined />} style={{ color: 'orange' }}>
-              Anular
-            </Button>
-          </Popconfirm>
+
+        {(factura.impuesto > 0 || (factura.porcentaje_iva ?? 0) > 0) && (
+          <div style={{ marginTop: 14 }}>
+            <Row icon={<Percent size={13} />} label={`IVA (${factura.porcentaje_iva}%)`} value={money(factura.impuesto, 2)} />
+          </div>
         )}
+
+        {factura.observaciones && (
+          <>
+            <div style={{ marginTop: 14, marginBottom: 6 }}>
+              <SectionLabel icon={<FileText size={13} />}>Observaciones</SectionLabel>
+            </div>
+            <div style={{ fontSize: 13, color: notion.inkMuted, lineHeight: 1.5 }}>{factura.observaciones}</div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          {factura.estado !== 'anulado' && factura.estado === 'guardado' && (
+            <>
+              <Button icon={<Pencil size={14} />} onClick={() => setIsModalOpen(true)} style={{ flex: 1, borderRadius: 8 }}>
+                Editar
+              </Button>
+              <Button
+                type="primary"
+                icon={<Printer size={14} />}
+                onClick={handleEmitir}
+                style={{ flex: 1, borderRadius: 8, background: viz.positive, borderColor: viz.positive }}
+              >
+                Emitir
+              </Button>
+            </>
+          )}
+          {factura.estado !== 'anulado' && factura.estado === 'emitido' && (
+            <Popconfirm title="¿Anular esta factura?" okText="Sí" cancelText="No" onConfirm={handleAnular}>
+              <Button danger icon={<X size={14} />} style={{ flex: 1, borderRadius: 8 }}>
+                Anular
+              </Button>
+            </Popconfirm>
+          )}
+          <Button
+            icon={<FileDown size={14} />}
+            style={{ flex: 1, borderRadius: 8 }}
+            onClick={() => window.open(`/ventas/facturas/imprimir/${factura.id}`, '_blank')}
+          >
+            Imprimir
+          </Button>
+        </div>
       </div>
 
       <FacturaModal open={isModalOpen} onCancel={() => setIsModalOpen(false)} onOk={handleOk} factura={factura} edit={true} />
-    </Card>
+    </div>
   );
 };
-
-const InfoItem = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="flex items-center gap-2">
-    {icon}
-    <Text strong>{label}:</Text>
-    <Text>{value}</Text>
-  </div>
-);
 
 export default CardFactura;

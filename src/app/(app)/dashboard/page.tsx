@@ -15,7 +15,9 @@ const DashboardPage = async () => {
     return <p>Debes iniciar sesión para acceder al dashboard.</p>;
   }
 
-  return <Dashboard />;
+  const token = session?.user?.token?.token || '';
+
+  return <Dashboard token={token} />;
 };
 
 export default DashboardPage;

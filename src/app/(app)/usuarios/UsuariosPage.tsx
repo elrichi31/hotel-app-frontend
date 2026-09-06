@@ -1,95 +1,107 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, Popconfirm, message, Alert, Spin, Empty } from 'antd';
-import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import React, { useEffect, useMemo, useState, useTransition } from 'react';
+import { Table, Input, message, Alert, Spin, Empty, Button, Avatar, Popconfirm, Tooltip } from 'antd';
+import {
+  Search,
+  Trash2,
+  Eye,
+  Plus,
+  Mail,
+  ShieldCheck,
+  User as UserIcon,
+  Tag,
+} from 'lucide-react';
 import UserService from '@/services/UsersService';
 import { useRouter } from 'next/navigation';
 import type { ColumnsType } from 'antd/es/table';
 import UserModal from '@/components/UserModal';
 import { User } from '@/types/types';
+import { notion, viz } from '@/lib/theme';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { ColumnHeader } from '@/components/ui/ColumnHeader';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
 
 interface UsersPageProps {
   token: string;
   role: string;
 }
 
+const AVATAR_COLORS = [viz.series1, viz.series2, viz.series3];
+/** Color estable por usuario (mismo id => mismo color siempre). */
+const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
+
 const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchText, setSearchText] = useState<string>('');
+  const [busqueda, setBusqueda] = useState('');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
 
   useEffect(() => {
-    if (token) {
-      if (role === 'admin') {
-        const fetchUsers = async () => {
-          try {
-            const usersData = await UserService.getAllUsers(token);
-            setUsers(usersData);
-            setFilteredUsers(usersData);
-            setLoading(false);
-          } catch (error) {
-            setError('Error al obtener los usuarios');
-            setLoading(false);
-          }
-        };
-        fetchUsers();
-      } else {
-        // Redirigir si el usuario no es administrador
-        message.error('Acceso denegado. Solo los administradores pueden acceder a esta página.');
-        router.push('/dashboard');
-      }
+    if (!token) return;
+    if (role !== 'admin') {
+      message.error('Acceso denegado. Solo los administradores pueden acceder a esta página.');
+      router.push('/dashboard');
+      return;
     }
-  }, [token, role]);
+    const fetchUsers = async () => {
+      try {
+        const usersData = await UserService.getAllUsers(token);
+        setUsers(usersData);
+      } catch {
+        setError('Error al obtener los usuarios');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, [token, role, router]);
 
-  // Función para manejar la búsqueda global
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase();
-    setSearchText(value);
-
-    const filtered = users.filter((user) =>
-      user.first_name.toLowerCase().includes(value) ||
-      user.last_name.toLowerCase().includes(value) ||
-      user.email.toLowerCase().includes(value) ||
-      user.role.toLowerCase().includes(value) ||
-      user.status.toLowerCase().includes(value)
+  const visibles = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.first_name.toLowerCase().includes(q) ||
+        u.last_name.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q) ||
+        u.status.toLowerCase().includes(q)
     );
+  }, [users, busqueda]);
 
-    setFilteredUsers(filtered);
+  const soloAdminActivo = (userId: number) => {
+    const admins = users.filter((u) => u.role === 'admin' && u.status === 'activo');
+    return admins.length === 1 && admins[0].id === userId;
   };
 
   const handleDelete = async (userId: number) => {
+    if (soloAdminActivo(userId)) {
+      message.warning('No se puede eliminar el único administrador activo.');
+      return;
+    }
     try {
-      const admins = users.filter((user) => user.role === 'admin' && user.status === 'activo');
-      if (admins.length === 1 && admins[0].id === userId) {
-        message.warning('No se puede eliminar el único administrador activo.');
-        return;
-      }
-
-      if (token) {
-        await UserService.deleteUser(userId, token);
-        message.success('Usuario eliminado exitosamente');
-        setUsers(users.filter((user) => user.id !== userId));
-        setFilteredUsers(filteredUsers.filter((user) => user.id !== userId));
-      }
-    } catch (error) {
+      await UserService.deleteUser(userId, token);
+      message.success('Usuario eliminado exitosamente');
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch {
       message.error('Error al eliminar el usuario');
     }
   };
 
   const handleEdit = (user: User) => {
-    // Verificar si solo queda un administrador activo
-    const admins = users.filter((user) => user.role === 'admin' && user.status === 'activo');
-    if (admins.length === 1 && admins[0].id === user.id) {
+    if (soloAdminActivo(user.id)) {
       message.warning('No se puede editar el único administrador activo.');
       return;
     }
-
     setSelectedUser(user);
     setIsEditMode(true);
     setIsModalVisible(true);
@@ -102,135 +114,192 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
   };
 
   const handleUpdateUser = async (updatedUser: Partial<User>) => {
+    if (!selectedUser) return;
     try {
-      if (token && selectedUser) {
-        const updated = await UserService.updateUser(selectedUser.id, updatedUser, token);
-        message.success('Usuario actualizado exitosamente');
-
-        setUsers(users.map((user) => (user.id === updated.id ? updated : user)));
-        setFilteredUsers(filteredUsers.map((user) => (user.id === updated.id ? updated : user)));
-
-        setIsModalVisible(false);
-        setSelectedUser(null);
-      }
-    } catch (error) {
+      const updated = await UserService.updateUser(selectedUser.id, updatedUser, token);
+      message.success('Usuario actualizado exitosamente');
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setIsModalVisible(false);
+      setSelectedUser(null);
+    } catch {
       message.error('Error al actualizar el usuario');
     }
   };
 
   const handleCreateUser = async (newUser: Partial<User>) => {
     try {
-      if (token) {
-        const createdUser = await UserService.createUser(newUser, token);
-        message.success('Usuario creado exitosamente');
-
-        setUsers([...users, createdUser]);
-        setFilteredUsers([...filteredUsers, createdUser]);
-
-        setIsModalVisible(false);
-      }
-    } catch (error) {
+      const createdUser = await UserService.createUser(newUser, token);
+      message.success('Usuario creado exitosamente');
+      setUsers((prev) => [...prev, createdUser]);
+      setIsModalVisible(false);
+    } catch {
       message.error('Error al crear el usuario');
     }
   };
 
-  if (loading) {
-    return <Spin />;
-  }
-
-  if (error) {
-    return <Alert message="Error" description={error} type="error" showIcon />;
-  }
+  if (loading) return <Spin />;
+  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
 
   const columns: ColumnsType<User> = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
+      // Nombre + apellido + usuario en una sola celda, como el perfil del sidebar
+      title: <ColumnHeader icon={<ShieldCheck size={13} />}>Usuario</ColumnHeader>,
+      key: 'usuario',
+      sorter: (a, b) => a.first_name.localeCompare(b.first_name),
+      render: (_, u) => {
+        const initials = `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase();
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Avatar shape="square" size={30} style={{ background: avatarColor(u.id), fontSize: 12, flexShrink: 0 }}>
+              {initials || 'U'}
+            </Avatar>
+            <div style={{ lineHeight: 1.3 }}>
+              <div style={{ color: notion.ink }}>
+                {u.first_name} {u.last_name}
+              </div>
+              <div style={{ fontSize: 12, color: notion.inkFaint }}>@{u.username}</div>
+            </div>
+          </div>
+        );
+      },
     },
     {
-      title: 'Nombre',
-      dataIndex: 'first_name',
-      key: 'first_name',
-    },
-    {
-      title: 'Apellido',
-      dataIndex: 'last_name',
-      key: 'last_name',
-    },
-    {
-      title: 'Nombre de Usuario',
-      dataIndex: 'username',
-      key: 'username',
-    },
-    {
-      title: 'Correo Electrónico',
+      title: <ColumnHeader icon={<Mail size={13} />}>Correo</ColumnHeader>,
       dataIndex: 'email',
       key: 'email',
+      render: (email: string) => <span style={{ color: notion.inkMuted }}>{email}</span>,
     },
     {
-      title: 'Rol',
+      title: <ColumnHeader icon={<Tag size={13} />}>Rol</ColumnHeader>,
       dataIndex: 'role',
       key: 'role',
+      filters: [
+        { text: 'Admin', value: 'admin' },
+        { text: 'Usuario', value: 'user' },
+      ],
+      onFilter: (value, record) => record.role === value,
+      render: (role: string) => {
+        const isAdmin = role === 'admin';
+        const color = isAdmin ? viz.series1 : notion.inkMuted;
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color, fontSize: 13.5 }}>
+            {isAdmin ? <ShieldCheck size={15} /> : <UserIcon size={15} />}
+            {isAdmin ? 'Admin' : 'Usuario'}
+          </span>
+        );
+      },
     },
     {
       title: 'Estado',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (status === 'activo' ? 'Activo' : 'Inactivo'),
+      filters: [
+        { text: 'Activo', value: 'activo' },
+        { text: 'Inactivo', value: 'inactivo' },
+      ],
+      onFilter: (value, record) => record.status === value,
+      render: (status: string) => (
+        <StatusPill color={status === 'activo' ? viz.positive : viz.negative} label={status === 'activo' ? 'Activo' : 'Inactivo'} />
+      ),
     },
     {
       title: 'Acciones',
-      key: 'actions',
+      key: 'acciones',
+      align: 'right',
+      width: 90,
       render: (_, user) => (
-        <div className="flex space-x-3">
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(user)}>
-            Editar
-          </Button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
           <Popconfirm
-            title="¿Estás seguro de eliminar este usuario?"
+            title="¿Eliminar este usuario?"
+            okText="Eliminar"
+            cancelText="Cancelar"
+            okButtonProps={{ danger: true }}
             onConfirm={() => handleDelete(user.id)}
-            okText="Sí"
-            cancelText="No"
-            placement="left"
           >
-            <Button danger icon={<DeleteOutlined />}>
-              Eliminar
-            </Button>
+            <Tooltip title="Eliminar">
+              <button
+                className="rounded-md transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+                style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: viz.negative, border: 'none', background: 'transparent', cursor: 'pointer' }}
+              >
+                <Trash2 size={15} />
+              </button>
+            </Tooltip>
           </Popconfirm>
+          <Tooltip title="Editar">
+            <button
+              onClick={() => handleEdit(user)}
+              className="rounded-md transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+              style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: notion.inkMuted, border: 'none', background: 'transparent', cursor: 'pointer' }}
+            >
+              <Eye size={15} />
+            </button>
+          </Tooltip>
         </div>
       ),
     },
   ];
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Lista de Usuarios</h1>
-      <div className="mb-4 flex justify-between items-center space-x-2">
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <PageHeader
+        title="Usuarios"
+        subtitle={
+          <>
+            <strong style={{ color: notion.ink }}>{users.length}</strong> cuentas registradas
+          </>
+        }
+        action={
+          <Button type="primary" icon={<Plus size={16} />} onClick={handleCreate}>
+            Crear usuario
+          </Button>
+        }
+      />
+
+      <div style={{ marginBottom: 14 }}>
         <Input
-          placeholder="Buscar usuarios..."
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={handleSearch}
-          style={{ width: 300 }}
+          allowClear
+          prefix={<Search size={14} color={notion.inkFaint} />}
+          placeholder="Buscar por nombre, usuario, correo, rol o estado"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{ maxWidth: 340 }}
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Crear Usuario
-        </Button>
       </div>
-      {filteredUsers.length === 0 ? (
+
+      {visibles.length === 0 ? (
         <div className="flex justify-center items-center h-64">
           <Empty description="No existen usuarios" />
         </div>
       ) : (
-        <Table
-          dataSource={filteredUsers}
+        <Table<User>
+          dataSource={visibles}
           columns={columns}
           rowKey="id"
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: 1000 }}
+          size="middle"
+          sticky
+          loading={isPending}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
+          pagination={{
+            ...pagination,
+            showSizeChanger: false,
+            showTotal: (total, range) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                Mostrando {range[0]} a {range[1]} de {total} usuarios
+                <PageSizeSelect
+                  value={pagination.pageSize}
+                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
+                />
+              </span>
+            ),
+            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
+          }}
+          scroll={{ x: 900 }}
         />
       )}
+
       <UserModal
         visible={isModalVisible}
         onCancel={() => {

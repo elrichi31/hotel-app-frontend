@@ -1,16 +1,34 @@
 // components/FacturaModal.tsx
 'use client'
-import { Button, DatePicker, Form, Input, InputNumber, Select, Space, Modal } from 'antd';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, InputNumber, Select, Modal } from 'antd';
+import {
+    Trash2,
+    Plus,
+    FileText,
+    User,
+    IdCard,
+    Phone,
+    MapPin,
+    Mail,
+    Calendar,
+    Wallet,
+    Save,
+} from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import { Section } from '@/components/ui/Section';
+import { ModalTitle } from '@/components/ui/ModalTitle';
+import { notion } from '@/lib/theme';
+import { money } from '@/lib/format';
+
+const { Item } = Form;
+const { Option } = Select;
 
 export default function FacturaModal({ open, onCancel, onOk, factura, edit }: any) {
-    const { Option } = Select;
     const [form] = Form.useForm();
     const [subtotal, setSubtotal] = useState<number>(0);
     const [total, setTotal] = useState<number>(0);
-    const modalTitle = edit ? `Editar Factura ${factura?.id}` : 'Crear Nueva Factura';
+    const modalTitle = edit ? `Editar factura ${factura?.numero_factura ?? `#${factura?.id}`}` : 'Crear factura';
 
     // Definir initialValues sin propagar '...factura' para evitar sobrescribir campos
     const initialValues = {
@@ -19,19 +37,17 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
         estado: factura?.estado || 'guardado',
         fecha_emision: factura?.fecha_emision && dayjs(factura.fecha_emision).isValid()
             ? dayjs(factura.fecha_emision)
-            : undefined, // Asegurar que sea un objeto dayjs o undefined
+            : undefined,
         nombre: factura?.nombre || '',
         apellido: factura?.apellido || '',
         identificacion: factura?.identificacion || '',
         direccion: factura?.direccion || '',
         telefono: factura?.telefono || '',
         correo: factura?.correo || '',
-        numero_factura: factura?.numero_factura || '',
         observaciones: factura?.observaciones || '',
         forma_pago: factura?.forma_pago || '',
     };
 
-    // Función para calcular subtotal y total
     const updateTotals = (productos: any[], descuento: number) => {
         const subtotalCalc = productos.reduce((acc: number, item: any) => {
             if (item && typeof item.cantidad === 'number' && typeof item.precio_unitario === 'number') {
@@ -39,25 +55,22 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
             }
             return acc;
         }, 0);
-
         const totalCalc = subtotalCalc - (descuento || 0);
         return { subtotal: subtotalCalc, total: totalCalc > 0 ? totalCalc : 0 };
     };
 
     useEffect(() => {
-        if (open) { // Asegurar que se ejecuta al abrir el modal
-            form.resetFields(); // Resetear campos al abrir el modal
-            form.setFieldsValue(initialValues); // Establecer valores iniciales
-
-            // Calcular y establecer subtotal y total
+        if (open) {
+            form.resetFields();
+            form.setFieldsValue(initialValues);
             const { subtotal: subtotalCalc, total: totalCalc } = updateTotals(initialValues.productos, initialValues.descuento);
             setSubtotal(subtotalCalc);
             setTotal(totalCalc);
             form.setFieldsValue({ subtotal: subtotalCalc, total: totalCalc });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [factura, form, open]);
 
-    // Manejar cambios en el formulario para recalcular subtotal y total
     const handleValuesChange = (changedValues: any, allValues: any) => {
         if (changedValues.productos || changedValues.descuento !== undefined) {
             const productos = allValues.productos || [];
@@ -69,18 +82,14 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
         }
     };
 
-    // Manejar la confirmación del modal
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
-            // Formatear la fecha de emisión a YYYY-MM-DD
-            const fecha_emision = values.fecha_emision
-                ? values.fecha_emision.format('YYYY-MM-DD')
-                : null;
-            onOk({ ...values, fecha_emision }); // Incluir la fecha formateada
-            form.resetFields(); // Resetear el formulario
-            setSubtotal(0); // Resetear subtotal
-            setTotal(0); // Resetear total
+            const fecha_emision = values.fecha_emision ? values.fecha_emision.format('YYYY-MM-DD') : null;
+            onOk({ ...values, fecha_emision });
+            form.resetFields();
+            setSubtotal(0);
+            setTotal(0);
         } catch (errorInfo) {
             console.log('Validation Failed:', errorInfo);
         }
@@ -89,185 +98,142 @@ export default function FacturaModal({ open, onCancel, onOk, factura, edit }: an
     return (
         <Modal
             open={open}
-            title={modalTitle}
-            okText={edit ? 'Guardar' : 'Crear'}
+            title={<ModalTitle icon={<FileText size={15} />}>{modalTitle}</ModalTitle>}
             cancelText="Cancelar"
             onCancel={onCancel}
             onOk={handleOk}
+            okText={edit ? 'Guardar' : 'Crear'}
+            okButtonProps={{ icon: <Save size={14} />, style: { borderRadius: 8 } }}
+            cancelButtonProps={{ style: { borderRadius: 8 } }}
+            width={640}
+            destroyOnClose
         >
-            <Form
-                form={form}
-                layout='vertical'
-                className='my-10'
-                initialValues={initialValues}
-                onValuesChange={handleValuesChange}
-            >
-                {/* Campos del formulario */}
-                <div className='flex space-x-5'>
-                    <Form.Item
-                        label='Nombre'
-                        name='nombre'
-                        className='w-full'
-                        rules={[{ required: true, message: 'Por favor ingrese el nombre' }]}
-                    >
-                        <Input placeholder='Ingrese el nombre' />
-                    </Form.Item>
-                    <Form.Item
-                        label='Apellido'
-                        name='apellido'
-                        className='w-full'
-                        rules={[{ required: true, message: 'Por favor ingrese el apellido' }]}
-                    >
-                        <Input placeholder='Ingrese el apellido' />
-                    </Form.Item>
-                </div>
-                <div className='flex space-x-5'>
-                    <Form.Item
-                        label='Identificación'
-                        name='identificacion'
-                        className='w-full'
-                        rules={[{ required: true, message: 'Por favor ingrese la identificación' }]}
-                    >
-                        <Input placeholder='Ingrese la identificación' />
-                    </Form.Item>
-                    <Form.Item
-                        label='Dirección'
-                        name='direccion'
-                        className='w-full'
-                        rules={[{ required: true, message: 'Por favor ingrese la dirección' }]}
-                    >
-                        <Input placeholder='Ingrese la dirección' />
-                    </Form.Item>
-                </div>
-                <div className='flex space-x-5'>
-                    <Form.Item
-                        label='Teléfono'
-                        name='telefono'
-                        className='w-full'
-                        rules={[{ required: true, message: 'Por favor ingrese el teléfono' }]}
-                    >
-                        <Input placeholder='Ingrese el teléfono' />
-                    </Form.Item>
-                    <Form.Item
-                        label='Correo'
-                        name='correo'
-                        className='w-full'
+            <Form form={form} layout="vertical" initialValues={initialValues} onValuesChange={handleValuesChange}>
+                <Section title="Datos del cliente">
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <Item label="Nombre" name="nombre" style={{ flex: 1 }} rules={[{ required: true, message: 'Ingresa el nombre' }]}>
+                            <Input prefix={<User size={14} color={notion.inkFaint} />} placeholder="Nombre" />
+                        </Item>
+                        <Item label="Apellido" name="apellido" style={{ flex: 1 }} rules={[{ required: true, message: 'Ingresa el apellido' }]}>
+                            <Input prefix={<User size={14} color={notion.inkFaint} />} placeholder="Apellido" />
+                        </Item>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <Item label="Identificación" name="identificacion" style={{ flex: 1 }} rules={[{ required: true, message: 'Ingresa la identificación' }]}>
+                            <Input prefix={<IdCard size={14} color={notion.inkFaint} />} placeholder="0000000000" />
+                        </Item>
+                        <Item label="Teléfono" name="telefono" style={{ flex: 1 }} rules={[{ required: true, message: 'Ingresa el teléfono' }]}>
+                            <Input prefix={<Phone size={14} color={notion.inkFaint} />} placeholder="0900000000" />
+                        </Item>
+                    </div>
+                    <Item label="Dirección" name="direccion" rules={[{ required: true, message: 'Ingresa la dirección' }]}>
+                        <Input prefix={<MapPin size={14} color={notion.inkFaint} />} placeholder="Av. Amazonas N11-92" />
+                    </Item>
+                    <Item
+                        label="Correo"
+                        name="correo"
+                        style={{ marginBottom: 0 }}
                         rules={[
-                            { required: true, message: 'Por favor ingrese el correo' },
-                            { type: 'email', message: 'Por favor ingrese un correo válido' }
+                            { required: true, message: 'Ingresa el correo' },
+                            { type: 'email', message: 'Ingresa un correo válido' },
                         ]}
                     >
-                        <Input placeholder='Ingrese el correo' />
-                    </Form.Item>
-                </div>
-                <div className='w-full'>
-                    <Form.Item
-                        label='Fecha de Emisión'
-                        name='fecha_emision'
-                        rules={[{ required: true, message: 'Por favor seleccione la fecha de emisión' }]}
-                    >
-                        <DatePicker
-                            className='w-full'
-                            format='YYYY-MM-DD'
-                            placeholder='Seleccione la fecha'
-                        />
-                    </Form.Item>
-                </div>
-                <div className='w-full'>
+                        <Input prefix={<Mail size={14} color={notion.inkFaint} />} placeholder="cliente@correo.com" />
+                    </Item>
+                </Section>
+
+                <Section title="Detalles">
+                    <div style={{ display: 'flex', gap: 12, marginBottom: 0 }}>
+                        <Item label="Fecha de emisión" name="fecha_emision" style={{ flex: 1 }} rules={[{ required: true, message: 'Selecciona la fecha' }]}>
+                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Selecciona la fecha" suffixIcon={<Calendar size={14} color={notion.inkFaint} />} />
+                        </Item>
+                        <Item label="Forma de pago" name="forma_pago" style={{ flex: 1, marginBottom: 0 }} rules={[{ required: true, message: 'Selecciona una forma de pago' }]}>
+                            <Select placeholder="Selecciona" suffixIcon={<Wallet size={14} color={notion.inkFaint} />}>
+                                <Option value="efectivo">Efectivo</Option>
+                                <Option value="tarjeta">Tarjeta</Option>
+                                <Option value="transferencia">Transferencia</Option>
+                            </Select>
+                        </Item>
+                    </div>
+                </Section>
+
+                <Section title="Productos">
                     <Form.List name="productos">
                         {(fields, { add, remove }) => (
                             <>
+                                {fields.length > 0 && (
+                                    <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 12, color: notion.inkFaint }}>
+                                        <span style={{ width: 72 }}>Cantidad</span>
+                                        <span style={{ flex: 1 }}>Descripción</span>
+                                        <span style={{ width: 120 }}>Precio unitario</span>
+                                        <span style={{ width: 24 }} />
+                                    </div>
+                                )}
                                 {fields.map(({ key, name, ...restField }) => (
-                                    <Space key={key} align="baseline" className='w-full'>
-                                        <div className='flex mb-5 space-x-2 w-full'>
-                                            <Form.Item
-                                                {...restField}
-                                                name={[name, 'cantidad']}
-                                                label="Cantidad"
-                                                layout='vertical'
-                                                rules={[{ required: true, message: 'Por favor ingresa la cantidad' }]}
-                                                className='m-auto'
-                                            >
-                                                <InputNumber min={1} placeholder="Cantidad" className='w-full' style={{minWidth: "30px"}}/>
-                                            </Form.Item>
-                                            <Form.Item
-                                                {...restField}
-                                                name={[name, 'descripcion']}
-                                                label="Descripción"
-                                                layout='vertical'
-                                                rules={[{ required: true, message: 'Por favor ingresa la descripción' }]}
-                                                className='m-auto'
-                                            >
-                                                <Input placeholder="Descripción" className='w-full' style={{minWidth: "90px"}}/>
-                                            </Form.Item>
-                                            <Form.Item
-                                                {...restField}
-                                                name={[name, 'precio_unitario']}
-                                                label="Precio Unitario"
-                                                layout='vertical'
-                                                rules={[{ required: true, message: 'Por favor ingresa el precio unitario' }]}
-                                                className='m-auto'
-                                            >
-                                                <InputNumber min={0} placeholder="Precio unitario" style={{minWidth: "120px"}}/>
-                                            </Form.Item>
-                                            <MinusCircleOutlined onClick={() => remove(name)} className='self-center text-red-500' />
-                                        </div>
-                                    </Space>
+                                    <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 10 }}>
+                                        <Item
+                                            {...restField}
+                                            name={[name, 'cantidad']}
+                                            rules={[{ required: true, message: 'Requerida' }]}
+                                            style={{ width: 72, marginBottom: 0 }}
+                                        >
+                                            <InputNumber min={1} placeholder="1" style={{ width: '100%' }} />
+                                        </Item>
+                                        <Item
+                                            {...restField}
+                                            name={[name, 'descripcion']}
+                                            rules={[{ required: true, message: 'Requerida' }]}
+                                            style={{ flex: 1, marginBottom: 0 }}
+                                        >
+                                            <Input placeholder="Desayuno buffet" />
+                                        </Item>
+                                        <Item
+                                            {...restField}
+                                            name={[name, 'precio_unitario']}
+                                            rules={[{ required: true, message: 'Requerido' }]}
+                                            style={{ width: 120, marginBottom: 0 }}
+                                        >
+                                            <InputNumber min={0} placeholder="0.00" style={{ width: '100%' }} prefix="$" />
+                                        </Item>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            size="small"
+                                            icon={<Trash2 size={14} />}
+                                            onClick={() => remove(name)}
+                                            style={{ width: 24, flexShrink: 0 }}
+                                        />
+                                    </div>
                                 ))}
-                                <Form.Item>
-                                    <Button
-                                        type="dashed"
-                                        onClick={() => add()}
-                                        block
-                                        icon={<PlusOutlined />}
-                                    >
-                                        Agregar Producto
-                                    </Button>
-                                </Form.Item>
+                                <Button type="dashed" onClick={() => add()} block icon={<Plus size={14} />}>
+                                    Agregar producto
+                                </Button>
                             </>
                         )}
                     </Form.List>
-                </div>
-                <div>
-                    <Form.Item
-                        label='Forma de Pago'
-                        name='forma_pago'
-                        rules={[{ required: true, message: 'Por favor seleccione una forma de pago' }]}
-                    >
-                        <Select placeholder='Seleccione la forma de pago'>
-                            <Option value='efectivo'>Efectivo</Option>
-                            <Option value='tarjeta'>Tarjeta</Option>
-                            <Option value='transferencia'>Transferencia</Option>
-                        </Select>
-                    </Form.Item>
-                </div>
-                <div>
-                    <Form.Item
-                        label="Observaciones"
-                        name="observaciones"
-                        rules={[{ required: false }]}
-                    >
-                        <Input.TextArea rows={2} />
-                    </Form.Item>
-                </div>
-                <Form.Item
-                    label='Descuento'
-                    name='descuento'
-                    className='w-full'
-                    rules={[{ required: false }]}
-                >
-                    <InputNumber placeholder='Ingrese el descuento' className='w-full' />
-                </Form.Item>
-                {/* Campos ocultos para subtotal y total */}
-                <Form.Item name='subtotal' hidden>
-                    <InputNumber />
-                </Form.Item>
-                <Form.Item name='total' hidden>
-                    <InputNumber />
-                </Form.Item>
-                <div className='mt-4'>
-                    <p>Subtotal: ${subtotal.toFixed(2)}</p>
-                    <p>Total: ${total.toFixed(2)}</p>
+                </Section>
+
+                <Section title="Descuento y observaciones">
+                    <Item label="Descuento" name="descuento" style={{ maxWidth: 200 }}>
+                        <InputNumber min={0} placeholder="0.00" style={{ width: '100%' }} prefix="$" />
+                    </Item>
+                    <Item label="Observaciones" name="observaciones" style={{ marginBottom: 0 }}>
+                        <Input.TextArea rows={2} placeholder="Opcional" />
+                    </Item>
+                </Section>
+
+                <Item name="subtotal" hidden><InputNumber /></Item>
+                <Item name="total" hidden><InputNumber /></Item>
+
+                <div style={{ display: 'flex', gap: 32, padding: '4px 4px 8px' }}>
+                    <div>
+                        <div style={{ fontSize: 12.5, color: notion.inkMuted }}>Subtotal</div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: notion.ink, marginTop: 2 }}>{money(subtotal, 2)}</div>
+                    </div>
+                    <div>
+                        <div style={{ fontSize: 12.5, color: notion.inkMuted }}>Total</div>
+                        <div style={{ fontSize: 20, fontWeight: 600, color: notion.ink, marginTop: 2 }}>{money(total, 2)}</div>
+                    </div>
                 </div>
             </Form>
         </Modal>

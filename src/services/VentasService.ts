@@ -62,6 +62,41 @@ const VentasService = {
         } catch (error) {
             throw new Error('Error al eliminar la venta');
         }
+    },
+
+    async checkInVenta(token: string, id: number): Promise<any> {
+        try {
+            const response = await axios.post(`/ventas/${id}/check-in`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            return response.data;
+        } catch (error) {
+            throw new Error('Error al registrar el check-in');
+        }
+    },
+
+    async checkOutVenta(
+        token: string,
+        id: number,
+        incluyeIva: boolean,
+        productosAdicionales: { descripcion: string; cantidad: number; precio_unitario: number }[] = []
+    ): Promise<any> {
+        try {
+            const response = await axios.post(
+                `/ventas/${id}/check-out`,
+                { incluye_iva: incluyeIva, productos_adicionales: productosAdicionales },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            return response.data;
+        } catch (error) {
+            throw new Error('Error al registrar el check-out');
+        }
     }
 }
 

@@ -1,171 +1,369 @@
 // components/VentasPage.tsx
 "use client"
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import VentasService from '@/services/VentasService';
-import { Spin, Alert, message, Empty, Table, Button, Select, DatePicker, Input, Popconfirm } from 'antd';
+import CheckOutModal from '@/components/CheckOutModal';
+import { Spin, Alert, message, Empty, Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { EditOutlined, CloseOutlined, DiffOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  Pencil,
+  Trash2,
+  FileText,
+  User,
+  UserCheck,
+  Calendar,
+  Clock,
+  DollarSign,
+  Percent,
+  Wallet,
+  Hash,
+  Tag,
+  LogIn,
+  LogOut,
+} from 'lucide-react';
+import { notion, viz } from '@/lib/theme';
+import { money, dateTime } from '@/lib/format';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { ColumnHeader } from '@/components/ui/ColumnHeader';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { TableToolbar, Period } from '@/components/ui/TableToolbar';
+import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
 
 dayjs.extend(isBetween);
 
-const { Option } = Select;
-const { RangePicker } = DatePicker;
-
 interface VentasPageProps {
-    token: string;
+  token: string;
 }
 
+type EstadoVenta = 'reservado' | 'check_in' | 'check_out' | 'cancelada';
+
+type Venta = {
+  id: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  fecha_checkin: string | null;
+  created_at: string;
+  subtotal: number;
+  descuento: number;
+  total: number;
+  estado: EstadoVenta;
+  personas: { nombre: string; apellido: string }[];
+  facturas: unknown[];
+  usuario: { first_name: string; last_name: string } | null;
+  precios: { precio: number; habitacion: { numero: string } }[];
+};
+
+const ESTADO_LABEL: Record<EstadoVenta, string> = {
+  reservado: 'Reservado',
+  check_in: 'Check-in',
+  check_out: 'Check-out',
+  cancelada: 'Cancelada',
+};
+
+const ESTADO_COLOR: Record<EstadoVenta, string> = {
+  reservado: viz.neutral,
+  check_in: viz.positive,
+  check_out: notion.inkFaint,
+  cancelada: viz.negative,
+};
+
+/** true si `fecha` cae dentro del periodo rápido elegido. */
+const enPeriodo = (fecha: string, periodo: Period) => {
+  const d = dayjs(fecha);
+  const hoy = dayjs().startOf('day');
+  switch (periodo) {
+    case 'hoy':
+      return d.isSame(hoy, 'day');
+    case 'ayer':
+      return d.isSame(hoy.subtract(1, 'day'), 'day');
+    case '7dias':
+      return d.isBetween(hoy.subtract(7, 'day'), hoy, 'day', '[]');
+    case 'mes':
+      return d.isAfter(hoy.subtract(1, 'month'));
+    default:
+      return true;
+  }
+};
+
 const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
-    const router = useRouter();
-    const [ventasHoy, setVentasHoy] = useState<any[]>([]);
-    const [ventasAyer, setVentasAyer] = useState<any[]>([]);
-    const [ventasUltimos7Dias, setVentasUltimos7Dias] = useState<any[]>([]);
-    const [ventasUltimoMes, setVentasUltimoMes] = useState<any[]>([]);
-    const [ventasTotales, setVentasTotales] = useState<any[]>([]);
-    const [filteredVentas, setFilteredVentas] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedOption, setSelectedOption] = useState<string>('todas');
-    const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-    const [searchText, setSearchText] = useState<string>('');
+  const router = useRouter();
+  const [ventas, setVentas] = useState<Venta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [periodo, setPeriodo] = useState<Period>('todas');
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [isPending, startTransition] = useTransition();
+  const [checkoutVenta, setCheckoutVenta] = useState<Venta | null>(null);
 
-    useEffect(() => {
-        const fetchVentas = async () => {
-            try {
-                const ventasData = await VentasService.getAllVentas(token);
-                const hoy = dayjs().startOf('day');
-                const ayer = hoy.subtract(1, 'day');
-                const hace7Dias = hoy.subtract(7, 'day');
-                const hace1Mes = hoy.subtract(1, 'month');
-
-                const ventasHoy = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isSame(hoy, 'day'));
-                const ventasAyer = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isSame(ayer, 'day'));
-                const ventasUltimos7Dias = ventasData.filter((venta: any) => 
-                    dayjs(venta.fecha_inicio).isBetween(hace7Dias, hoy, 'day', '[]') // Incluir bordes
-                );
-                
-                const ventasUltimoMes = ventasData.filter((venta: any) => dayjs(venta.fecha_inicio).isAfter(hace1Mes));
-
-                setVentasHoy(ventasHoy.sort((a: any, b: any) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));
-                setVentasAyer(ventasAyer.sort((a: any, b: any) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));
-                setVentasUltimos7Dias(ventasUltimos7Dias.sort((a: any, b: any) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));
-                setVentasUltimoMes(ventasUltimoMes.sort((a: any, b: any) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));
-                setVentasTotales(ventasData.sort((a: any, b: any) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));
-                setFilteredVentas(ventasData);
-            } catch {
-                setError('Error al obtener las ventas');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchVentas();
-    }, [token]);
-
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.toLowerCase();
-        setSearchText(value);
-        setFilteredVentas(ventasTotales.filter((venta) =>
-            venta.id.toString().includes(value) ||
-            venta.personas[0]?.nombre.toLowerCase().includes(value) ||
-            venta.personas[0]?.apellido.toLowerCase().includes(value) ||
-            venta.subtotal.toString().includes(value) ||
-            venta.total.toString().includes(value)
-        ));
+  useEffect(() => {
+    if (!token) return;
+    const fetchVentas = async () => {
+      try {
+        const data = await VentasService.getAllVentas(token);
+        setVentas(data.sort((a: Venta, b: Venta) => dayjs(b.fecha_inicio).diff(dayjs(a.fecha_inicio))));
+      } catch {
+        setError('Error al obtener las ventas');
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchVentas();
+  }, [token]);
 
-    const handleDelete = async (ventaId: number) => {
-        try {
-            await VentasService.deleteVenta(token, ventaId);
-            message.success('Venta eliminada');
-            setFilteredVentas(filteredVentas.filter((venta) => venta.id !== ventaId));
-        } catch {
-            message.error('Error al eliminar la venta');
-        }
-    };
+  // Periodo, rango de fechas y búsqueda se combinan: antes cada uno pisaba
+  // a los demás (buscar borraba el filtro de periodo activo, y viceversa).
+  const visibles = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return ventas.filter((venta) => {
+      if (!enPeriodo(venta.fecha_inicio, periodo)) return false;
+      if (dateRange && !dayjs(venta.fecha_inicio).isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
+      if (!q) return true;
+      const cliente = venta.personas[0] ? `${venta.personas[0].nombre} ${venta.personas[0].apellido}` : '';
+      return (
+        String(venta.id).includes(q) ||
+        cliente.toLowerCase().includes(q) ||
+        String(venta.subtotal).includes(q) ||
+        String(venta.total).includes(q)
+      );
+    });
+  }, [ventas, periodo, dateRange, busqueda]);
 
-    const handleEdit = (venta: any) => router.push(`ventas/${venta.id}`);
+  const handleDelete = async (ventaId: number) => {
+    try {
+      await VentasService.deleteVenta(token, ventaId);
+      message.success('Venta eliminada');
+      setVentas((prev) => prev.filter((v) => v.id !== ventaId));
+    } catch {
+      message.error('Error al eliminar la venta');
+    }
+  };
 
-    const handleFilter = () => {
-        let filtered = ventasTotales;
-        if (selectedOption === 'hoy') filtered = ventasHoy;
-        else if (selectedOption === 'ayer') filtered = ventasAyer;
-        else if (selectedOption === '7dias') filtered = ventasUltimos7Dias;
-        else if (selectedOption === 'mes') filtered = ventasUltimoMes;
+  const handleCheckIn = async (ventaId: number) => {
+    try {
+      const updated = await VentasService.checkInVenta(token, ventaId);
+      message.success('Check-in registrado');
+      setVentas((prev) => prev.map((v) => (v.id === ventaId ? { ...v, estado: updated.estado } : v)));
+    } catch {
+      message.error('Error al registrar el check-in');
+    }
+  };
 
-        if (dateRange) {
-            filtered = filtered.filter((venta) => dayjs(venta.fecha_inicio).isBetween(dateRange[0], dateRange[1], null, '[]'));
-        }
-        setFilteredVentas(filtered);
-    };
+  const openCheckOut = (venta: Venta) => {
+    setCheckoutVenta(venta);
+  };
 
-    if (loading) return <Spin />;
-    if (error) return <Alert message="Error" description={error} type="error" showIcon />;
-
-    return (
-        <div className="container mx-auto">
-            <h1 className="text-2xl font-bold mb-4">Detalles de las Ventas</h1>
-            <div className="mb-4 flex flex-col lg:flex-row w-full space-x-0 lg:space-x-10 space-y-5 lg:space-y-0">
-                <div className="flex flex-col sm:flex-row sm:items-center w-full space-x-0 sm:space-x-3 space-y-3 sm:space-y-0">
-                    <Select value={selectedOption} onChange={setSelectedOption} >
-                        <Option value="hoy">Hoy</Option>
-                        <Option value="ayer">Ayer</Option>
-                        <Option value="7dias">Últimos 7 Días</Option>
-                        <Option value="mes">Último Mes</Option>
-                        <Option value="todas">Todas</Option>
-                    </Select>
-                    <RangePicker format="DD/MM/YYYY" onChange={(dates: any) => setDateRange(dates)} />
-                    <Button onClick={handleFilter} type="primary">Aplicar Filtro</Button>
-                </div>
-                <div className='w-full'>
-                    <Input
-                        placeholder="Buscar..."
-                        prefix={<SearchOutlined />}
-                        value={searchText}
-                        onChange={handleSearch}
-                    />
-                </div>
-            </div>
-
-            {filteredVentas.length === 0 ? (
-                <div className="flex justify-center items-center h-64">
-                    <Empty description="No existen ventas" />
-                </div>
-            ) : (
-                <Table
-                    dataSource={filteredVentas}
-                    rowKey="id"
-                    scroll={{
-                        x:
-                            'max-content'
-                    }}
-                    columns={[
-                        { title: 'ID', dataIndex: 'id', key: 'id' },
-                        { title: 'Cliente', dataIndex: 'personas', key: 'cliente', render: (personas) => `${personas[0].nombre} ${personas[0].apellido}` },
-                        { title: 'Fecha de Inicio', dataIndex: 'fecha_inicio', key: 'fecha_inicio', render: (text) => dayjs(text).format('DD/MM/YYYY HH:mm') },
-                        { title: 'Fecha de Fin', dataIndex: 'fecha_fin', key: 'fecha_fin', render: (text) => dayjs(text).format('DD/MM/YYYY HH:mm') },
-                        { title: '# Facturas', dataIndex: 'facturas', key: 'facturas', render: (facturas) => facturas.length },
-                        { title: 'Subtotal', dataIndex: 'subtotal', key: 'subtotal' },
-                        { title: 'Descuento', dataIndex: 'descuento', key: 'descuento' },
-                        { title: 'Total', dataIndex: 'total', key: 'total' },
-                        {
-                            title: 'Acciones', key: 'actions', render: (text, venta) => (
-                                <div className="flex space-x-5">
-                                    <a onClick={() => handleEdit(venta)} type="link">Editar</a>
-                                    <a onClick={() => router.push(`ventas/facturas/${venta.id}`)} type="link">Facturas</a>
-                                    <Popconfirm title="¿Estás seguro de eliminar esta venta?" onConfirm={() => handleDelete(venta.id)} okText="Sí" cancelText="No" placement='left'>
-                                        <CloseOutlined className='text-xl' style={{ color: 'red', cursor: 'pointer' }}>Eliminar</CloseOutlined>
-                                    </Popconfirm>
-                                </div>
-                            ),
-                        },
-                    ]}
-                />
-            )}
-        </div>
+  const handleCheckOutSuccess = ({ venta, factura }: { venta: any; factura: any }) => {
+    setVentas((prev) =>
+      prev.map((v) => (v.id === venta.id ? { ...v, estado: venta.estado, facturas: [...v.facturas, factura] } : v))
     );
+    setCheckoutVenta(null);
+  };
+
+  if (loading) return <Spin />;
+  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+
+  const columns: ColumnsType<Venta> = [
+    {
+      title: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
+      dataIndex: 'id',
+      key: 'id',
+      sorter: (a, b) => a.id - b.id,
+      width: 80,
+      render: (id: number) => (
+        <span style={{ color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>{id}</span>
+      ),
+    },
+    {
+      title: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
+      dataIndex: 'personas',
+      key: 'cliente',
+      render: (personas: Venta['personas']) =>
+        personas[0] ? `${personas[0].nombre} ${personas[0].apellido}` : '—',
+    },
+    {
+      title: <ColumnHeader icon={<Calendar size={13} />}>Fecha de inicio</ColumnHeader>,
+      dataIndex: 'fecha_inicio',
+      key: 'fecha_inicio',
+      sorter: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
+      render: (text: string) => <span style={{ color: notion.inkMuted }}>{dateTime(text)}</span>,
+    },
+    {
+      title: <ColumnHeader icon={<Calendar size={13} />}>Fecha de fin</ColumnHeader>,
+      dataIndex: 'fecha_fin',
+      key: 'fecha_fin',
+      render: (text: string) => <span style={{ color: notion.inkMuted }}>{dateTime(text)}</span>,
+    },
+    {
+      title: <ColumnHeader icon={<Clock size={13} />}>Creada</ColumnHeader>,
+      dataIndex: 'created_at',
+      key: 'created_at',
+      sorter: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
+      defaultSortOrder: 'descend',
+      render: (text: string) => <span style={{ color: notion.inkFaint }}>{dateTime(text)}</span>,
+    },
+    {
+      title: <ColumnHeader icon={<UserCheck size={13} />}>Registrada por</ColumnHeader>,
+      dataIndex: 'usuario',
+      key: 'usuario',
+      render: (usuario: Venta['usuario']) => (
+        <span style={{ color: notion.inkMuted }}>
+          {usuario ? `${usuario.first_name} ${usuario.last_name}` : '—'}
+        </span>
+      ),
+    },
+    {
+      title: <ColumnHeader icon={<FileText size={13} />}># Facturas</ColumnHeader>,
+      dataIndex: 'facturas',
+      key: 'facturas',
+      align: 'center',
+      render: (facturas: unknown[]) => facturas.length,
+    },
+    {
+      title: <ColumnHeader icon={<DollarSign size={13} />}>Subtotal</ColumnHeader>,
+      dataIndex: 'subtotal',
+      key: 'subtotal',
+      sorter: (a, b) => a.subtotal - b.subtotal,
+      render: (n: number) => (
+        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(n, 2)}</span>
+      ),
+    },
+    {
+      title: <ColumnHeader icon={<Percent size={13} />}>Descuento</ColumnHeader>,
+      dataIndex: 'descuento',
+      key: 'descuento',
+      render: (n: number) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(n, 2)}</span>
+      ),
+    },
+    {
+      title: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
+      dataIndex: 'total',
+      key: 'total',
+      sorter: (a, b) => a.total - b.total,
+      render: (n: number) => (
+        <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
+          {money(n, 2)}
+        </span>
+      ),
+    },
+    {
+      title: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
+      dataIndex: 'estado',
+      key: 'estado',
+      filters: [
+        { text: 'Reservado', value: 'reservado' },
+        { text: 'Check-in', value: 'check_in' },
+        { text: 'Check-out', value: 'check_out' },
+        { text: 'Cancelada', value: 'cancelada' },
+      ],
+      onFilter: (value, record) => record.estado === value,
+      render: (estado: EstadoVenta) => <StatusPill color={ESTADO_COLOR[estado]} label={ESTADO_LABEL[estado]} />,
+    },
+    {
+      title: '',
+      key: 'acciones',
+      align: 'right',
+      width: 60,
+      render: (_, venta) => (
+        <RowActionsMenu
+          actions={[
+            ...(venta.estado === 'reservado'
+              ? [{ key: 'checkin', label: 'Check-in', icon: <LogIn size={14} />, onClick: () => handleCheckIn(venta.id) }]
+              : []),
+            ...(venta.estado === 'check_in'
+              ? [{ key: 'checkout', label: 'Check-out', icon: <LogOut size={14} />, onClick: () => openCheckOut(venta) }]
+              : []),
+            { key: 'editar', label: 'Editar', icon: <Pencil size={14} />, onClick: () => router.push(`ventas/${venta.id}`) },
+            {
+              key: 'facturas',
+              label: 'Ver facturas',
+              icon: <FileText size={14} />,
+              onClick: () => router.push(`ventas/facturas/${venta.id}`),
+            },
+            {
+              key: 'eliminar',
+              label: 'Eliminar',
+              icon: <Trash2 size={14} />,
+              danger: true,
+              onClick: () => handleDelete(venta.id),
+              confirm: {
+                title: '¿Eliminar esta venta?',
+                description: 'Esta acción no se puede deshacer.',
+                okText: 'Eliminar',
+              },
+            },
+          ]}
+        />
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ maxWidth: 1500, margin: '0 auto' }}>
+      <PageHeader
+        title="Ventas"
+        subtitle={
+          <>
+            <strong style={{ color: notion.ink }}>{visibles.length}</strong> de {ventas.length} ventas
+          </>
+        }
+      />
+
+      <TableToolbar
+        search={busqueda}
+        onSearch={setBusqueda}
+        searchPlaceholder="Buscar por cliente, ID o monto"
+        period={periodo}
+        onPeriodChange={setPeriodo}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
+
+      {visibles.length === 0 ? (
+        <div className="flex justify-center items-center h-64">
+          <Empty description="No existen ventas" />
+        </div>
+      ) : (
+        <Table<Venta>
+          dataSource={visibles}
+          columns={columns}
+          rowKey="id"
+          size="middle"
+          sticky
+          scroll={{ x: 1300 }}
+          loading={isPending}
+          pagination={{
+            ...pagination,
+            showSizeChanger: false,
+            showTotal: (total) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                {total} ventas
+                <PageSizeSelect
+                  value={pagination.pageSize}
+                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
+                />
+              </span>
+            ),
+            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
+          }}
+        />
+      )}
+
+      <CheckOutModal
+        open={checkoutVenta !== null}
+        venta={checkoutVenta}
+        token={token}
+        onClose={() => setCheckoutVenta(null)}
+        onSuccess={handleCheckOutSuccess}
+      />
+    </div>
+  );
 };
 
 export default VentasPage;

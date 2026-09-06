@@ -3,7 +3,7 @@ import { Client } from '@/types/types';
 const ClientService = {
     async getAllClients(token: string): Promise<Client[]> {
         try {
-            const response = await axios.get('/clientes', {
+            const response = await axios.get('/personas', {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -14,9 +14,13 @@ const ClientService = {
         }
     },
 
-    async getClientById(id: number): Promise<Client> {
+    async getClientById(id: number, token: string): Promise<Client> {
         try {
-            const response = await axios.get(`/clientes/${id}`);
+            const response = await axios.get(`/personas/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
             return response.data;
         } catch (error) {
             throw new Error('Error al obtener el cliente');
@@ -68,7 +72,7 @@ const ClientService = {
 
     async deleteClient(id: number, token: string): Promise<void> {
         try {
-            await axios.delete(`/clientes/${id}`, {
+            await axios.delete(`/personas/${id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

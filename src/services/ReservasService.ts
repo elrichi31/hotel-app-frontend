@@ -89,6 +89,34 @@ const ReservaService = {
         } catch (error) {
             throw new Error('Error al confirmar la reserva');
         }
+    },
+
+    // Aprobar la reserva: el admin la convierte en una venta y recién ahí se ocupa la habitación
+    async aprobarReserva(id: number, token: string): Promise<any> {
+        try {
+            const response = await axios.post(`/reservas/${id}/aprobar`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error?.response?.data?.message ?? 'Error al aprobar la reserva');
+        }
+    },
+
+    // Rechazar la reserva: no se genera venta ni se ocupa nada
+    async rechazarReserva(id: number, token: string): Promise<any> {
+        try {
+            const response = await axios.post(`/reservas/${id}/rechazar`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error?.response?.data?.message ?? 'Error al rechazar la reserva');
+        }
     }
 };
 
