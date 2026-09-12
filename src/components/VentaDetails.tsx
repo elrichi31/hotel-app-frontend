@@ -1,6 +1,6 @@
 'use client'
 import React from 'react';
-import { Card, Popconfirm } from 'antd';
+import { Card, CardHeader, CardBody, CardFooter, Button, Popover, PopoverTrigger, PopoverContent } from '@heroui/react';
 import { Pencil, X, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from '@/lib/toast';
@@ -10,28 +10,6 @@ const VentaDetails = ({ venta, onDelete }: any) => {
     onDelete(venta.id);
     toast.success('Venta eliminada correctamente');
   };
-
-  const popConfirm = () => {
-    handleDelete();
-  };
-
-  const eliminar = (
-    <Popconfirm title="¿Estás seguro de eliminar esta venta?" okText="Sí" cancelText="No" onConfirm={popConfirm}>
-      <X size={16} />
-    </Popconfirm>
-  );
-
-  const editar = (
-    <Link href={`/ventas/${venta.id}`}>
-      <Pencil size={16} />
-    </Link>
-  );
-
-  const factura = (
-    <Link href={`/ventas/facturas/${venta.id}`}>
-      <Receipt size={16} />
-    </Link>
-  );
 
   const renderPersonas = () => {
     const { personas } = venta;
@@ -60,8 +38,9 @@ const VentaDetails = ({ venta, onDelete }: any) => {
   };
 
   return (
-    <Card key={venta.id} title={`Venta #${venta.id}`} className="mb-5 shadow-md" actions={[editar, factura, eliminar]}>
-      <div>
+    <Card key={venta.id} className="mb-5 shadow-md">
+      <CardHeader className="font-semibold">Venta #{venta.id}</CardHeader>
+      <CardBody>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Información de la Venta</h2>
           <p><strong>Fecha Inicio:</strong> {new Date(venta.fecha_inicio).toLocaleString()}</p>
@@ -80,7 +59,32 @@ const VentaDetails = ({ venta, onDelete }: any) => {
           <h2 className="text-xl font-semibold">Habitaciones y Precios</h2>
           {renderHabitaciones()}
         </div>
-      </div>
+      </CardBody>
+      <CardFooter className="justify-end gap-2">
+        <Button as={Link} href={`/ventas/${venta.id}`} isIconOnly variant="light" size="sm">
+          <Pencil size={16} />
+        </Button>
+        <Button as={Link} href={`/ventas/facturas/${venta.id}`} isIconOnly variant="light" size="sm">
+          <Receipt size={16} />
+        </Button>
+        <Popover placement="top">
+          <PopoverTrigger>
+            <Button isIconOnly variant="light" color="danger" size="sm">
+              <X size={16} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent>
+            <div className="p-2">
+              <div className="text-sm font-medium mb-2">¿Estás seguro de eliminar esta venta?</div>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" color="danger" onPress={handleDelete}>
+                  Sí
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </CardFooter>
     </Card>
   );
 };

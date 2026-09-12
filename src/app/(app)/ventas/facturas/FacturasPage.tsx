@@ -1,8 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import FacturasService from '@/services/FacturasService';
-import { Spin, Alert, Empty, Table, Modal } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Spinner, Modal, ModalContent, ModalBody, Select, SelectItem } from '@heroui/react';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import {
@@ -30,7 +29,9 @@ import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu, RowAction } from '@/components/ui/RowActionsMenu';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
-import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
@@ -81,7 +82,8 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
   const [detalleFactura, setDetalleFactura] = useState<any | null>(null);
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 });
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -104,6 +106,7 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return facturas.filter((f) => {
+      if (filtroEstado !== 'todos' && f.estado !== filtroEstado) return false;
       if (!enPeriodo(f.fecha_emision, periodo)) return false;
       if (dateRange && !dayjs(f.fecha_emision).isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
       if (!q) return true;
@@ -116,7 +119,7 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
         f.estado.toLowerCase().includes(q)
       );
     });
-  }, [facturas, periodo, dateRange, busqueda]);
+  }, [facturas, periodo, dateRange, busqueda, filtroEstado]);
 
   const actualizarLocal = (actualizada: Factura) => {
     setFacturas((prev) => prev.map((f) => (f.id === actualizada.id ? actualizada : f)));
@@ -167,90 +170,85 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><Spin size="large" /></div>;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<Factura>(
+    visibles,
+    {
+      fecha_emision: (a, b) => dayjs(a.fecha_emision).diff(dayjs(b.fecha_emision)),
+      numero_factura: (a, b) => a.id - b.id,
+      subtotal: (a, b) => a.subtotal - b.subtotal,
+      total: (a, b) => a.total - b.total,
+    },
+    { column: 'fecha_emision', direction: 'descending' }
+  );
+  const pageItems = paginate(sorted, pagination);
 
-  const columns: ColumnsType<Factura> = [
+  if (loading) return <div className="flex justify-center items-center h-screen"><Spinner size="lg" /></div>;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
+
+  const columns: DataTableColumn<Factura>[] = [
     {
-      title: <ColumnHeader icon={<Calendar size={13} />}>Fecha de emisión</ColumnHeader>,
-      dataIndex: 'fecha_emision',
       key: 'fecha_emision',
-      sorter: (a, b) => dayjs(a.fecha_emision).diff(dayjs(b.fecha_emision)),
-      defaultSortOrder: 'descend',
-      render: (text: string) => <span style={{ color: notion.inkMuted }}>{shortDate(text)}</span>,
+      header: <ColumnHeader icon={<Calendar size={13} />}>Fecha de emisión</ColumnHeader>,
+      allowsSorting: true,
+      render: (f) => <span style={{ color: notion.inkMuted }}>{shortDate(f.fecha_emision)}</span>,
     },
     {
-      title: <ColumnHeader icon={<User size={13} />}>Nombres</ColumnHeader>,
       key: 'nombre_cliente',
-      render: (_: any, f: Factura) => `${f.nombre} ${f.apellido}`,
+      header: <ColumnHeader icon={<User size={13} />}>Nombres</ColumnHeader>,
+      render: (f) => `${f.nombre} ${f.apellido}`,
     },
     {
-      title: <ColumnHeader icon={<IdCard size={13} />}>Identificación</ColumnHeader>,
-      dataIndex: 'identificacion',
       key: 'identificacion',
-      render: (id: string) => <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{id}</span>,
+      header: <ColumnHeader icon={<IdCard size={13} />}>Identificación</ColumnHeader>,
+      render: (f) => <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{f.identificacion}</span>,
     },
     {
-      title: <ColumnHeader icon={<Hash size={13} />}># Factura</ColumnHeader>,
-      dataIndex: 'numero_factura',
       key: 'numero_factura',
-      sorter: (a, b) => a.id - b.id,
-      render: (numero: string, f: Factura) => (
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{numero ?? `#${f.id}`}</span>
-      ),
+      header: <ColumnHeader icon={<Hash size={13} />}># Factura</ColumnHeader>,
+      allowsSorting: true,
+      render: (f) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{f.numero_factura ?? `#${f.id}`}</span>,
     },
     {
-      title: <ColumnHeader icon={<DollarSign size={13} />}>Subtotal</ColumnHeader>,
-      dataIndex: 'subtotal',
       key: 'subtotal',
-      sorter: (a, b) => a.subtotal - b.subtotal,
-      render: (n: number) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(n, 2)}</span>,
+      header: <ColumnHeader icon={<DollarSign size={13} />}>Subtotal</ColumnHeader>,
+      allowsSorting: true,
+      render: (f) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(f.subtotal, 2)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Percent size={13} />}>Descuento</ColumnHeader>,
-      dataIndex: 'descuento',
       key: 'descuento',
-      render: (n: number) => (
-        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(n, 2)}</span>
+      header: <ColumnHeader icon={<Percent size={13} />}>Descuento</ColumnHeader>,
+      render: (f) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(f.descuento, 2)}</span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Percent size={13} />}>IVA</ColumnHeader>,
-      dataIndex: 'impuesto',
       key: 'impuesto',
-      render: (n: number) => (
-        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(n ?? 0, 2)}</span>
+      header: <ColumnHeader icon={<Percent size={13} />}>IVA</ColumnHeader>,
+      render: (f) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(f.impuesto ?? 0, 2)}</span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
-      dataIndex: 'total',
       key: 'total',
-      sorter: (a, b) => a.total - b.total,
-      render: (n: number) => (
+      header: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
+      allowsSorting: true,
+      render: (f) => (
         <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {money(n, 2)}
+          {money(f.total, 2)}
         </span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
-      dataIndex: 'estado',
       key: 'estado',
-      filters: [
-        { text: 'Guardado', value: 'guardado' },
-        { text: 'Emitido', value: 'emitido' },
-        { text: 'Anulado', value: 'anulado' },
-      ],
-      onFilter: (value, record) => record.estado === value,
-      render: (estado: Estado) => <StatusDot color={facturaEstadoColor[estado]} label={facturaEstadoLabel[estado]} />,
+      header: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
+      render: (f) => <StatusDot color={facturaEstadoColor[f.estado]} label={facturaEstadoLabel[f.estado]} />,
     },
     {
-      title: '',
       key: 'acciones',
-      align: 'right',
+      header: '',
+      align: 'end',
       width: 60,
-      render: (_, factura) => {
+      render: (factura) => {
         const acciones: RowAction[] = [
           { key: 'detalle', label: 'Ver detalle', icon: <Info size={14} />, onClick: () => handleVerDetalle(factura) },
         ];
@@ -302,35 +300,41 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
         onDateRangeChange={setDateRange}
       />
 
-      {visibles.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <Empty description="No existen facturas" />
-        </div>
-      ) : (
-        <Table<Factura>
-          dataSource={visibles}
-          columns={columns}
-          rowKey="id"
-          size="middle"
-          sticky
-          loading={isPending}
-          pagination={{
-            ...pagination,
-            showSizeChanger: false,
-            showTotal: (total) => (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                {total} facturas
-                <PageSizeSelect
-                  value={pagination.pageSize}
-                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
-                />
-              </span>
-            ),
-            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
-          }}
-          scroll={{ x: 1000 }}
-        />
-      )}
+      <div style={{ marginBottom: 14 }}>
+        <Select
+          aria-label="Estado"
+          placeholder="Estado"
+          selectedKeys={[filtroEstado]}
+          onSelectionChange={(keys) => setFiltroEstado(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-48"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos los estados</SelectItem>
+          <SelectItem key="guardado">Guardado</SelectItem>
+          <SelectItem key="emitido">Emitido</SelectItem>
+          <SelectItem key="anulado">Anulado</SelectItem>
+        </Select>
+      </div>
+
+      <DataTable<Factura>
+        ariaLabel="Facturas"
+        columns={columns}
+        rows={pageItems}
+        isLoading={isPending}
+        sortDescriptor={sortDescriptor}
+        onSortChange={(d) => startTransition(() => setSortDescriptor(d))}
+        emptyContent="No existen facturas"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="facturas"
+              pagination={pagination}
+              onChange={(next) => startTransition(() => setPagination(next))}
+            />
+          ) : null
+        }
+      />
 
       {selectedFactura && (
         <FacturaModal
@@ -342,24 +346,21 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
         />
       )}
 
-      <Modal
-        open={!!detalleFactura}
-        onCancel={() => setDetalleFactura(null)}
-        footer={null}
-        width={380}
-        destroyOnClose
-        title={null}
-      >
-        {detalleFactura && (
-          <CardFactura
-            factura={detalleFactura}
-            token={token}
-            onUpdate={(actualizada) => {
-              actualizarLocal(actualizada);
-              setDetalleFactura(actualizada);
-            }}
-          />
-        )}
+      <Modal isOpen={!!detalleFactura} onOpenChange={(open) => !open && setDetalleFactura(null)} size="sm">
+        <ModalContent>
+          <ModalBody className="py-6">
+            {detalleFactura && (
+              <CardFactura
+                factura={detalleFactura}
+                token={token}
+                onUpdate={(actualizada) => {
+                  actualizarLocal(actualizada);
+                  setDetalleFactura(actualizada);
+                }}
+              />
+            )}
+          </ModalBody>
+        </ModalContent>
       </Modal>
     </div>
   );

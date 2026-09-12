@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Segmented, Spin, Alert } from "antd";
+import { Tabs, Tab, Spinner } from "@heroui/react";
 import {
   TrendingUp,
   TrendingDown,
@@ -231,13 +231,13 @@ export default function VentasDashboard({ token }: { token: string }) {
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
-        <Spin size="large" />
+        <Spinner size="lg" />
       </div>
     );
   }
 
   if (error || !stats) {
-    return <Alert type="error" showIcon message="Error" description={error || "No se pudo cargar el panel"} />;
+    return <div style={{ color: notion.red }}>{error || "No se pudo cargar el panel"}</div>;
   }
 
   const cumulative = (() => {
@@ -378,11 +378,16 @@ export default function VentasDashboard({ token }: { token: string }) {
               </span>
             </div>
           </div>
-          <Segmented
-            value={mode}
-            onChange={(v) => setMode(v as "Diario" | "Acumulado")}
-            options={["Diario", "Acumulado"]}
-          />
+          <Tabs
+            selectedKey={mode}
+            onSelectionChange={(key) => setMode(key as "Diario" | "Acumulado")}
+            size="sm"
+            variant="solid"
+            color="primary"
+          >
+            <Tab key="Diario" title="Diario" />
+            <Tab key="Acumulado" title="Acumulado" />
+          </Tabs>
         </div>
 
         <div style={{ marginTop: 16 }}>

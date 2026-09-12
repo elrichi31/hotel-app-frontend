@@ -2,8 +2,7 @@
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import ClientService from '@/services/ClientService';
 import ClientModal from '@/components/ClientModal';
-import { Spin, Alert, Empty, Table, Button } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Spinner, Button } from '@heroui/react';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { Pencil, Trash2, User, IdCard, Globe, MapPin, Hash, Plus, Clock } from 'lucide-react';
@@ -14,7 +13,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
-import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
@@ -50,7 +51,7 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
   const [periodo, setPeriodo] = useState<Period>('todas');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [busqueda, setBusqueda] = useState('');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 });
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editando, setEditando] = useState<Client | null>(null);
@@ -115,60 +116,63 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
     setEditando(null);
   };
 
-  if (loading) return <Spin />;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<ClienteRow>(
+    visibles,
+    {
+      id: (a, b) => a.id - b.id,
+      created_at: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
+    },
+    { column: 'created_at', direction: 'descending' }
+  );
+  const pageItems = paginate(sorted, pagination);
 
-  const columns: ColumnsType<ClienteRow> = [
+  if (loading) return <Spinner />;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
+
+  const columns: DataTableColumn<ClienteRow>[] = [
     {
-      title: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
-      dataIndex: 'id',
       key: 'id',
-      sorter: (a, b) => a.id - b.id,
+      header: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
+      allowsSorting: true,
       width: 70,
-      render: (id: number) => (
-        <span style={{ color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>{id}</span>
-      ),
+      render: (c) => <span style={{ color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>{c.id}</span>,
     },
     {
-      title: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
       key: 'cliente',
-      render: (_: any, c: Client) => `${c.nombre} ${c.apellido}`,
+      header: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
+      render: (c) => `${c.nombre} ${c.apellido}`,
     },
     {
-      title: <ColumnHeader icon={<IdCard size={13} />}>Documento</ColumnHeader>,
       key: 'documento',
-      render: (_: any, c: Client) => (
+      header: <ColumnHeader icon={<IdCard size={13} />}>Documento</ColumnHeader>,
+      render: (c) => (
         <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
           {c.tipo_documento === 'pasaporte' ? 'Pasaporte' : 'Cédula'} · {c.numero_documento}
         </span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Globe size={13} />}>Ciudadanía</ColumnHeader>,
-      dataIndex: 'ciudadania',
       key: 'ciudadania',
-      render: (v: string) => <span style={{ color: notion.inkMuted }}>{v}</span>,
+      header: <ColumnHeader icon={<Globe size={13} />}>Ciudadanía</ColumnHeader>,
+      render: (c) => <span style={{ color: notion.inkMuted }}>{c.ciudadania}</span>,
     },
     {
-      title: <ColumnHeader icon={<MapPin size={13} />}>Procedencia</ColumnHeader>,
-      dataIndex: 'procedencia',
       key: 'procedencia',
-      render: (v: string) => <span style={{ color: notion.inkMuted }}>{v}</span>,
+      header: <ColumnHeader icon={<MapPin size={13} />}>Procedencia</ColumnHeader>,
+      render: (c) => <span style={{ color: notion.inkMuted }}>{c.procedencia}</span>,
     },
     {
-      title: <ColumnHeader icon={<Clock size={13} />}>Registrado</ColumnHeader>,
-      dataIndex: 'created_at',
       key: 'created_at',
-      sorter: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
-      defaultSortOrder: 'descend',
-      render: (text: string | undefined) => <span style={{ color: notion.inkFaint }}>{text ? dateTime(text) : '—'}</span>,
+      header: <ColumnHeader icon={<Clock size={13} />}>Registrado</ColumnHeader>,
+      allowsSorting: true,
+      render: (c) => <span style={{ color: notion.inkFaint }}>{c.created_at ? dateTime(c.created_at) : '—'}</span>,
     },
     {
-      title: '',
       key: 'acciones',
-      align: 'right',
+      header: '',
+      align: 'end',
       width: 60,
-      render: (_, cliente) => (
+      render: (cliente) => (
         <RowActionsMenu
           actions={[
             { key: 'editar', label: 'Editar', icon: <Pencil size={14} />, onClick: () => abrirEditar(cliente) },
@@ -200,7 +204,7 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
           </>
         }
         action={
-          <Button type="primary" icon={<Plus size={16} />} onClick={abrirCrear}>
+          <Button color="primary" startContent={<Plus size={16} />} onPress={abrirCrear}>
             Agregar cliente
           </Button>
         }
@@ -216,35 +220,25 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
         onDateRangeChange={setDateRange}
       />
 
-      {visibles.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <Empty description="No existen clientes" />
-        </div>
-      ) : (
-        <Table<ClienteRow>
-          dataSource={visibles}
-          columns={columns}
-          rowKey="id"
-          size="middle"
-          sticky
-          scroll={{ x: 900 }}
-          loading={isPending}
-          pagination={{
-            ...pagination,
-            showSizeChanger: false,
-            showTotal: (total) => (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                {total} clientes
-                <PageSizeSelect
-                  value={pagination.pageSize}
-                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
-                />
-              </span>
-            ),
-            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
-          }}
-        />
-      )}
+      <DataTable<ClienteRow>
+        ariaLabel="Clientes"
+        columns={columns}
+        rows={pageItems}
+        isLoading={isPending}
+        sortDescriptor={sortDescriptor}
+        onSortChange={(d) => startTransition(() => setSortDescriptor(d))}
+        emptyContent="No existen clientes"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="clientes"
+              pagination={pagination}
+              onChange={(next) => startTransition(() => setPagination(next))}
+            />
+          ) : null
+        }
+      />
 
       <ClientModal
         open={isModalOpen}

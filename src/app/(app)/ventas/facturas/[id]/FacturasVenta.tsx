@@ -4,8 +4,9 @@ import FacturasService from '@/services/FacturasService';
 import CardFactura from '@/components/FacturaCard';
 import { Plus } from 'lucide-react';
 import FacturaModal from '@/components/FacturaModal';
-import { Button, Empty, Spin, Alert } from 'antd';
+import { Button, Spinner } from '@heroui/react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { notion } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 
 export default function FacturasVenta({ params, token }: any) {
@@ -54,13 +55,13 @@ export default function FacturasVenta({ params, token }: any) {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <Spin size="large" />
+                <Spinner size="lg" />
             </div>
         );
     }
 
     if (error) {
-        return <Alert message="Error" description={error} type="error" showIcon />;
+        return <div style={{ color: notion.red }}>{error}</div>;
     }
 
     return (
@@ -69,15 +70,15 @@ export default function FacturasVenta({ params, token }: any) {
                 title={`Facturas de la venta #${params.id}`}
                 subtitle={`${facturas.length} factura${facturas.length === 1 ? '' : 's'}`}
                 action={
-                    <Button type="primary" icon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>
+                    <Button color="primary" startContent={<Plus size={16} />} onPress={() => setIsModalOpen(true)}>
                         Crear factura
                     </Button>
                 }
             />
 
             {facturas.length === 0 ? (
-                <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 12, padding: '48px 16px' }}>
-                    <Empty description="No hay facturas para esta venta" />
+                <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 12, padding: '48px 16px', textAlign: 'center', color: notion.inkFaint }}>
+                    No hay facturas para esta venta
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>

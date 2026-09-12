@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from 'react';
-import { Input, Select, Checkbox, Segmented, Tag } from 'antd';
+import { Input, Select, SelectItem, Checkbox, Tabs, Tab, Chip } from '@heroui/react';
 import { Search } from 'lucide-react';
 import { notion, viz } from '@/lib/theme';
 import { StatusDot } from '@/components/ui/StatusDot';
@@ -52,35 +52,35 @@ export function RoomPicker({
           {selected.map((s) => {
             const room = rooms.find((r) => String(r.id) === String(s.id));
             return (
-              <Tag
-                key={s.id}
-                closable
-                onClose={() => room && onToggle(room, null, null)}
-                style={{ margin: 0 }}
-              >
+              <Chip key={s.id} size="sm" variant="flat" onClose={() => room && onToggle(room, null, null)}>
                 Hab. {room?.numero ?? s.id} · {money(s.price, 2)}
-              </Tag>
+              </Chip>
             );
           })}
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <Input
-          allowClear
-          size="small"
-          prefix={<Search size={13} color={notion.inkFaint} />}
+          isClearable
+          size="sm"
+          startContent={<Search size={13} color={notion.inkFaint} />}
           placeholder="Buscar por número o tipo"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onValueChange={setBusqueda}
           style={{ maxWidth: 220 }}
         />
-        <Segmented
-          size="small"
-          value={filtro}
-          onChange={(v) => setFiltro(v as typeof filtro)}
-          options={['Todas', 'Libre', 'Ocupado']}
-        />
+        <Tabs
+          selectedKey={filtro}
+          onSelectionChange={(key) => setFiltro(key as typeof filtro)}
+          size="sm"
+          variant="solid"
+          color="primary"
+        >
+          <Tab key="Todas" title="Todas" />
+          <Tab key="Libre" title="Libre" />
+          <Tab key="Ocupado" title="Ocupado" />
+        </Tabs>
       </div>
 
       {/* Alto fijo con scroll interno: la sección deja de empujar el resto de la página */}
@@ -113,8 +113,8 @@ export function RoomPicker({
                 }}
               >
                 <Checkbox
-                  checked={marcado}
-                  onChange={() => {
+                  isSelected={marcado}
+                  onValueChange={() => {
                     if (marcado) {
                       onToggle(room, null, null);
                     } else {
@@ -131,20 +131,21 @@ export function RoomPicker({
                   <StatusDot color={room.estado === 'Libre' ? viz.positive : viz.series3} label={room.estado} />
                 </span>
                 <Select
-                  size="small"
-                  disabled={!marcado}
-                  value={actual?.priceId}
+                  size="sm"
+                  isDisabled={!marcado}
+                  selectedKeys={actual?.priceId != null ? [String(actual.priceId)] : []}
                   placeholder="Tarifa"
                   style={{ width: 150, marginLeft: 'auto' }}
-                  options={(room.precios ?? []).map((p) => ({
-                    value: p.id,
-                    label: `${p.numero_personas} pers. · ${money(Number(p.precio), 2)}`,
-                  }))}
-                  onChange={(priceId) => {
-                    const precio = room.precios?.find((p) => p.id === priceId);
+                  onSelectionChange={(keys) => {
+                    const priceId = Array.from(keys as Set<React.Key>)[0];
+                    const precio = room.precios?.find((p) => String(p.id) === String(priceId));
                     if (precio) onPriceChange(String(room.id), Number(precio.precio), precio.id);
                   }}
-                />
+                >
+                  {(room.precios ?? []).map((p) => (
+                    <SelectItem key={p.id}>{`${p.numero_personas} pers. · ${money(Number(p.precio), 2)}`}</SelectItem>
+                  ))}
+                </Select>
               </div>
             );
           })

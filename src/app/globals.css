@@ -21,52 +21,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Los títulos de grupo del Menu de antd imitan los encabezados de sección */
-.ant-menu-inline .ant-menu-item-group-title {
-  padding: 14px 16px 4px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: none;
-}
-
-/* Scrollbar discreta, visible solo al pasar el cursor */
-.ant-layout-sider ::-webkit-scrollbar,
-.ant-drawer-body ::-webkit-scrollbar {
-  width: 8px;
-}
-.ant-layout-sider ::-webkit-scrollbar-thumb,
-.ant-drawer-body ::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 4px;
-}
-.ant-layout-sider:hover ::-webkit-scrollbar-thumb,
-.ant-drawer-body:hover ::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.18);
-}
-
-/*
- * Toasts de `message` (antd): la API estática no lee el ConfigProvider oscuro
- * (limitación conocida de antd v5 fuera de <App>), así que sale en claro por
- * defecto. Se fuerza el tema oscuro por CSS y se reubica abajo a la derecha,
- * en vez de reescribir cada `message.success/error(...)` del código para
- * usar el hook con contexto.
- */
-.ant-message {
-  top: auto !important;
-  bottom: 16px !important;
-  inset-inline-end: 0;
-}
-.ant-message-notice-wrapper {
-  text-align: right !important;
-  padding-inline-end: 16px;
-}
-.ant-message-notice-content {
-  background: var(--app-card-bg) !important;
-  color: rgb(var(--app-ink)) !important;
-  border: 1px solid var(--app-divider);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-}
-
 /* El panel divide 2:1 en escritorio y se apila en pantallas estrechas */
 @media (max-width: 900px) {
   .dash-split {

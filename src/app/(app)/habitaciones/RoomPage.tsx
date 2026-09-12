@@ -16,8 +16,7 @@ import {
   Tv,
   Users,
 } from 'lucide-react';
-import { Button, Table, Input, Segmented, Tooltip, Space } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Button, Input, Tabs, Tab, Tooltip, Popover, PopoverTrigger, PopoverContent, Select, SelectItem } from '@heroui/react';
 import RoomModal from '@/components/RoomModal';
 import { notion, viz } from '@/lib/theme';
 import { money } from '@/lib/format';
@@ -25,7 +24,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { useSortedRows } from '@/lib/useSortedRows';
 import type { Room, RoomPrecio } from '@/types/types';
 import { toast } from '@/lib/toast';
 
@@ -47,7 +48,8 @@ export default function RoomsPage({ token }: RoomsPageProps) {
   const [editing, setEditing] = useState<Room | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'Todas' | 'Libre' | 'Ocupado'>('Todas');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 15 });
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 15 });
   const [isPending, startTransition] = useTransition();
 
   const fetchRooms = async () => {
@@ -123,6 +125,7 @@ export default function RoomsPage({ token }: RoomsPageProps) {
     const q = busqueda.trim().toLowerCase();
     return rooms.filter((r) => {
       if (filtroEstado !== 'Todas' && r.estado !== filtroEstado) return false;
+      if (filtroTipo !== 'todos' && r.tipo !== filtroTipo) return false;
       if (!q) return true;
       return (
         String(r.numero).toLowerCase().includes(q) ||
@@ -130,111 +133,173 @@ export default function RoomsPage({ token }: RoomsPageProps) {
         r.descripcion?.toLowerCase().includes(q)
       );
     });
-  }, [rooms, busqueda, filtroEstado]);
+  }, [rooms, busqueda, filtroEstado, filtroTipo]);
 
   const libres = rooms.filter((r) => r.estado === 'Libre').length;
 
-  const columns: ColumnsType<Room> = [
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<Room>(
+    visibles,
     {
-      title: <ColumnHeader icon={<Home size={13} />}>Habitación</ColumnHeader>,
-      dataIndex: 'numero',
+      numero: (a, b) => Number(a.numero) - Number(b.numero),
+      tipo: (a, b) => a.tipo.localeCompare(b.tipo),
+      numero_camas: (a, b) => a.numero_camas - b.numero_camas,
+      capacidad: (a, b) => (a.capacidad ?? 0) - (b.capacidad ?? 0),
+      tarifas: (a, b) => (rangoTarifas(a.precios)?.min ?? Infinity) - (rangoTarifas(b.precios)?.min ?? Infinity),
+    },
+    { column: 'numero', direction: 'ascending' }
+  );
+  const pageItems = paginate(sorted, pagination);
+
+  const columns: DataTableColumn<Room>[] = [
+    {
       key: 'numero',
-      // Orden numérico: el número viene como texto y "10" iría antes que "9"
-      sorter: (a, b) => Number(a.numero) - Number(b.numero),
-      defaultSortOrder: 'ascend',
-      render: (numero: string) => (
+      header: <ColumnHeader icon={<Home size={13} />}>Habitación</ColumnHeader>,
+      allowsSorting: true,
+      width: 120,
+      render: (room) => (
         <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {numero}
+          {room.numero}
         </span>
       ),
-      width: 120,
     },
     {
-      title: <ColumnHeader icon={<Tag size={13} />}>Tipo</ColumnHeader>,
-      dataIndex: 'tipo',
       key: 'tipo',
-      filters: tipos.map((t) => ({ text: t, value: t })),
-      onFilter: (value, record) => record.tipo === value,
-      sorter: (a, b) => a.tipo.localeCompare(b.tipo),
-      render: (tipo: string) => <span style={{ color: notion.inkMuted }}>{tipo}</span>,
+      header: <ColumnHeader icon={<Tag size={13} />}>Tipo</ColumnHeader>,
+      allowsSorting: true,
       width: 130,
+      render: (room) => <span style={{ color: notion.inkMuted }}>{room.tipo}</span>,
     },
     {
-      title: 'Estado',
-      dataIndex: 'estado',
       key: 'estado',
-      render: (estado: Room['estado']) => (
-        <StatusPill color={estado === 'Libre' ? viz.positive : viz.negative} label={estado} />
-      ),
+      header: 'Estado',
       width: 120,
+      render: (room) => (
+        <StatusPill color={room.estado === 'Libre' ? viz.positive : viz.negative} label={room.estado} />
+      ),
     },
     {
-      title: <ColumnHeader icon={<Hash size={13} />}>Camas</ColumnHeader>,
-      dataIndex: 'numero_camas',
       key: 'numero_camas',
+      header: <ColumnHeader icon={<Hash size={13} />}>Camas</ColumnHeader>,
       align: 'center',
-      sorter: (a, b) => a.numero_camas - b.numero_camas,
-      render: (n: number) => (
-        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{n}</span>
-      ),
+      allowsSorting: true,
       width: 90,
+      render: (room) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{room.numero_camas}</span>
+      ),
     },
     {
-      title: <ColumnHeader icon={<Users size={13} />}>Capacidad</ColumnHeader>,
-      dataIndex: 'capacidad',
       key: 'capacidad',
+      header: <ColumnHeader icon={<Users size={13} />}>Capacidad</ColumnHeader>,
       align: 'center',
-      sorter: (a, b) => (a.capacidad ?? 0) - (b.capacidad ?? 0),
-      render: (n: number) => (
-        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{n ?? '-'}</span>
-      ),
+      allowsSorting: true,
       width: 100,
-    },
-    {
-      title: 'Comodidades',
-      key: 'comodidades',
-      render: (_, room) => (
-        <Space size={10}>
-          <Tooltip title={room.wifi ? 'Tiene wifi' : 'Sin wifi'}>
-            <Wifi size={15} color={room.wifi ? viz.positive : notion.divider} />
-          </Tooltip>
-          <Tooltip title={room.tv_cable ? 'Tiene TV por cable' : 'Sin TV por cable'}>
-            <Tv size={15} color={room.tv_cable ? viz.positive : notion.divider} />
-          </Tooltip>
-        </Space>
+      render: (room) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{room.capacidad ?? '-'}</span>
       ),
-      width: 110,
     },
     {
-      title: <ColumnHeader icon={<Wallet size={13} />}>Tarifas</ColumnHeader>,
+      key: 'comodidades',
+      header: 'Comodidades',
+      width: 110,
+      render: (room) => (
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Tooltip content={room.wifi ? 'Tiene wifi' : 'Sin wifi'}>
+            <span style={{ display: 'inline-flex' }}>
+              <Wifi size={15} color={room.wifi ? viz.positive : notion.divider} />
+            </span>
+          </Tooltip>
+          <Tooltip content={room.tv_cable ? 'Tiene TV por cable' : 'Sin TV por cable'}>
+            <span style={{ display: 'inline-flex' }}>
+              <Tv size={15} color={room.tv_cable ? viz.positive : notion.divider} />
+            </span>
+          </Tooltip>
+        </div>
+      ),
+    },
+    {
       key: 'tarifas',
-      // Ordena por la tarifa más baja; sin tarifas va al final
-      sorter: (a, b) => (rangoTarifas(a.precios)?.min ?? Infinity) - (rangoTarifas(b.precios)?.min ?? Infinity),
-      render: (_, room) => {
+      header: <ColumnHeader icon={<Wallet size={13} />}>Tarifas</ColumnHeader>,
+      allowsSorting: true,
+      width: 160,
+      render: (room) => {
         const rango = rangoTarifas(room.precios);
         if (!rango) return <span style={{ color: notion.inkFaint }}>Sin tarifas</span>;
         const texto = rango.min === rango.max ? money(rango.min) : `${money(rango.min)} – ${money(rango.max)}`;
         return (
-          <Tooltip title="Despliega la fila para ver el detalle por número de huéspedes">
-            <span style={{ color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>{texto}</span>
-          </Tooltip>
+          <Popover placement="bottom">
+            <PopoverTrigger>
+              <button
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  color: notion.ink,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {texto}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent>
+              <div style={{ padding: 8, minWidth: 200 }}>
+                <div style={{ fontSize: 12, color: notion.inkFaint, marginBottom: 8 }}>
+                  Camas {room.tipo_cama ? `de ${room.tipo_cama.toLowerCase()}` : ''}
+                  {room.amenidades && room.amenidades.length > 0 && <> · {room.amenidades.join(', ')}</>}
+                </div>
+                <div style={{ fontSize: 12, color: notion.inkFaint, marginBottom: 8 }}>Tarifa por número de huéspedes</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {(room.precios ?? []).map((p) => (
+                    <div
+                      key={`${room.id}-${p.numero_personas}`}
+                      style={{
+                        border: `1px solid ${notion.divider}`,
+                        borderRadius: 8,
+                        padding: '8px 12px',
+                        minWidth: 104,
+                        background: notion.cardBg,
+                      }}
+                    >
+                      <div style={{ fontSize: 11.5, color: notion.inkFaint }}>
+                        {p.numero_personas} {p.numero_personas === 1 ? 'huésped' : 'huéspedes'}
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: notion.ink, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                        {money(Number(p.precio))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         );
       },
-      width: 160,
     },
     {
-      title: <ColumnHeader icon={<UserSquare2 size={13} />}>Descripción</ColumnHeader>,
-      dataIndex: 'descripcion',
       key: 'descripcion',
-      ellipsis: true,
-      render: (d: string) => <span style={{ color: notion.inkFaint }}>{d}</span>,
+      header: <ColumnHeader icon={<UserSquare2 size={13} />}>Descripción</ColumnHeader>,
+      render: (room) => (
+        <span
+          style={{
+            color: notion.inkFaint,
+            display: 'block',
+            maxWidth: 220,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          title={room.descripcion}
+        >
+          {room.descripcion}
+        </span>
+      ),
     },
     {
-      title: '',
       key: 'acciones',
-      align: 'right',
+      header: '',
+      align: 'end',
       width: 60,
-      render: (_, room) => (
+      render: (room) => (
         <RowActionsMenu
           actions={[
             { key: 'editar', label: 'Editar', icon: <Pencil size={14} />, onClick: () => abrirEditar(room) },
@@ -266,102 +331,69 @@ export default function RoomsPage({ token }: RoomsPageProps) {
           </>
         }
         action={
-          <Button type="primary" icon={<Plus size={16} />} onClick={abrirCrear}>
+          <Button color="primary" startContent={<Plus size={16} />} onPress={abrirCrear}>
             Crear habitación
           </Button>
         }
       />
 
       {/* Filtros en una sola fila sobre la tabla */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <Input
-          allowClear
-          prefix={<Search size={14} color={notion.inkFaint} />}
+          isClearable
+          startContent={<Search size={14} color={notion.inkFaint} />}
           placeholder="Buscar por número, tipo o descripción"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          style={{ maxWidth: 340 }}
+          onValueChange={setBusqueda}
+          className="max-w-xs"
         />
-        <Segmented
-          value={filtroEstado}
-          onChange={(v) => setFiltroEstado(v as typeof filtroEstado)}
-          options={['Todas', 'Libre', 'Ocupado']}
-        />
+        <Tabs
+          selectedKey={filtroEstado}
+          onSelectionChange={(key) => setFiltroEstado(key as typeof filtroEstado)}
+          size="sm"
+          variant="solid"
+          color="primary"
+        >
+          <Tab key="Todas" title="Todas" />
+          <Tab key="Libre" title="Libre" />
+          <Tab key="Ocupado" title="Ocupado" />
+        </Tabs>
+        {tipos.length > 0 && (
+          <Select
+            aria-label="Tipo"
+            placeholder="Tipo"
+            selectedKeys={[filtroTipo]}
+            onSelectionChange={(keys) => setFiltroTipo(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+            className="w-40"
+            disallowEmptySelection
+          >
+            {[
+              <SelectItem key="todos">Todos los tipos</SelectItem>,
+              ...tipos.map((t) => <SelectItem key={t}>{t}</SelectItem>),
+            ]}
+          </Select>
+        )}
       </div>
 
-      <Table<Room>
-        rowKey="id"
+      <DataTable<Room>
+        ariaLabel="Habitaciones"
         columns={columns}
-        dataSource={visibles}
-        loading={loading || isPending}
-        size="middle"
-        sticky
-        scroll={{ x: 900 }}
-        pagination={{
-          ...pagination,
-          showSizeChanger: false,
-          showTotal: (total) => (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-              {total} habitaciones
-              <PageSizeSelect
-                value={pagination.pageSize}
-                options={[15, 25, 50]}
-                onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
-              />
-            </span>
-          ),
-          onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
-        }}
-        expandable={{
-          // Las tarifas son una lista de 1..N: no caben en una celda, van aquí
-          expandedRowRender: (room) => (
-            <div style={{ padding: '4px 8px 10px' }}>
-              <div style={{ fontSize: 12, color: notion.inkFaint, marginBottom: 8 }}>
-                Camas {room.tipo_cama ? `de ${room.tipo_cama.toLowerCase()}` : ''}
-                {room.amenidades && room.amenidades.length > 0 && (
-                  <> · {room.amenidades.join(', ')}</>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: notion.inkFaint, marginBottom: 8 }}>
-                Tarifa por número de huéspedes
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(room.precios ?? []).map((p) => (
-                  <div
-                    key={`${room.id}-${p.numero_personas}`}
-                    style={{
-                      border: `1px solid ${notion.divider}`,
-                      borderRadius: 8,
-                      padding: '8px 12px',
-                      minWidth: 104,
-                      background: notion.cardBg,
-                    }}
-                  >
-                    <div style={{ fontSize: 11.5, color: notion.inkFaint }}>
-                      {p.numero_personas} {p.numero_personas === 1 ? 'huésped' : 'huéspedes'}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 600,
-                        color: notion.ink,
-                        marginTop: 2,
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {money(Number(p.precio))}
-                    </div>
-                  </div>
-                ))}
-                {(room.precios ?? []).length === 0 && (
-                  <span style={{ color: notion.inkFaint, fontSize: 13 }}>
-                    Esta habitación todavía no tiene tarifas cargadas.
-                  </span>
-                )}
-              </div>
-            </div>
-          ),
-        }}
+        rows={pageItems}
+        isLoading={loading || isPending}
+        sortDescriptor={sortDescriptor}
+        onSortChange={(d) => startTransition(() => setSortDescriptor(d))}
+        emptyContent="No hay habitaciones registradas"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="habitaciones"
+              pagination={pagination}
+              pageSizeOptions={[15, 25, 50]}
+              onChange={(next) => startTransition(() => setPagination(next))}
+            />
+          ) : null
+        }
       />
 
       <RoomModal

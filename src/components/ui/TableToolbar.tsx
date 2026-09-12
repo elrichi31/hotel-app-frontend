@@ -1,11 +1,10 @@
 "use client";
 import React from 'react';
-import { Input, Segmented, DatePicker } from 'antd';
+import { Input, Tabs, Tab, DateRangePicker } from '@heroui/react';
 import { Search } from 'lucide-react';
-import type { Dayjs } from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import { notion } from '@/lib/theme';
-
-const { RangePicker } = DatePicker;
+import { toCalendarDate, fromCalendarDate } from '@/lib/dateField';
 
 export type Period = 'todas' | 'hoy' | 'ayer' | '7dias' | 'mes';
 
@@ -51,20 +50,37 @@ export function TableToolbar({
       }}
     >
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Segmented value={period} onChange={(v) => onPeriodChange(v as Period)} options={PERIOD_OPTIONS} />
-        <RangePicker
-          format="DD/MM/YYYY"
-          value={dateRange as any}
-          onChange={(dates) => onDateRangeChange(dates as [Dayjs, Dayjs] | null)}
+        <Tabs
+          selectedKey={period}
+          onSelectionChange={(key) => onPeriodChange(key as Period)}
+          size="sm"
+          variant="solid"
+          color="primary"
+        >
+          {PERIOD_OPTIONS.map((opt) => (
+            <Tab key={opt.value} title={opt.label} />
+          ))}
+        </Tabs>
+        <DateRangePicker
+          aria-label="Rango de fechas"
+          value={dateRange ? { start: toCalendarDate(dateRange[0].format('YYYY-MM-DD'))!, end: toCalendarDate(dateRange[1].format('YYYY-MM-DD'))! } : null}
+          onChange={(range) => {
+            if (!range?.start || !range?.end) {
+              onDateRangeChange(null);
+              return;
+            }
+            onDateRangeChange([dayjs(fromCalendarDate(range.start)), dayjs(fromCalendarDate(range.end))]);
+          }}
+          className="w-64"
         />
       </div>
       <Input
-        allowClear
-        prefix={<Search size={14} color={notion.inkFaint} />}
+        isClearable
+        startContent={<Search size={14} color={notion.inkFaint} />}
         placeholder={searchPlaceholder}
         value={search}
-        onChange={(e) => onSearch(e.target.value)}
-        style={{ maxWidth: 320 }}
+        onValueChange={onSearch}
+        className="max-w-xs"
       />
     </div>
   );

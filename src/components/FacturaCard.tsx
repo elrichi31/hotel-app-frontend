@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Popconfirm, Button, Avatar } from 'antd';
+import { Button, Avatar, Popover, PopoverTrigger, PopoverContent } from '@heroui/react';
 import {
   X,
   Pencil,
@@ -213,9 +213,7 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) =
 
         {/* Perfil del cliente: mismo patrón de avatar que la tabla de Usuarios */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <Avatar shape="square" size={30} style={{ background: viz.series1, fontSize: 12, flexShrink: 0 }}>
-            {initials || '?'}
-          </Avatar>
+          <Avatar radius="sm" style={{ width: 30, height: 30, background: viz.series1, fontSize: 12, flexShrink: 0 }} name={initials || '?'} />
           <span style={{ fontSize: 14, fontWeight: 500, color: notion.ink }}>
             {factura.nombre} {factura.apellido}
           </span>
@@ -278,30 +276,42 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) =
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           {factura.estado !== 'anulado' && factura.estado === 'guardado' && (
             <>
-              <Button icon={<Pencil size={14} />} onClick={() => setIsModalOpen(true)} style={{ flex: 1, borderRadius: 8 }}>
+              <Button startContent={<Pencil size={14} />} onPress={() => setIsModalOpen(true)} className="flex-1">
                 Editar
               </Button>
               <Button
-                type="primary"
-                icon={<Printer size={14} />}
-                onClick={handleEmitir}
-                style={{ flex: 1, borderRadius: 8, background: viz.positive, borderColor: viz.positive }}
+                startContent={<Printer size={14} />}
+                onPress={handleEmitir}
+                className="flex-1"
+                style={{ background: viz.positive, color: '#fff' }}
               >
                 Emitir
               </Button>
             </>
           )}
           {factura.estado !== 'anulado' && factura.estado === 'emitido' && (
-            <Popconfirm title="¿Anular esta factura?" okText="Sí" cancelText="No" onConfirm={handleAnular}>
-              <Button danger icon={<X size={14} />} style={{ flex: 1, borderRadius: 8 }}>
-                Anular
-              </Button>
-            </Popconfirm>
+            <Popover placement="top">
+              <PopoverTrigger>
+                <Button color="danger" variant="flat" startContent={<X size={14} />} className="flex-1">
+                  Anular
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent>
+                <div className="p-2">
+                  <div className="text-sm font-medium mb-2">¿Anular esta factura?</div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" color="danger" onPress={handleAnular}>
+                      Sí
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
           <Button
-            icon={<FileDown size={14} />}
-            style={{ flex: 1, borderRadius: 8 }}
-            onClick={() => window.open(`/ventas/facturas/imprimir/${factura.id}`, '_blank')}
+            startContent={<FileDown size={14} />}
+            className="flex-1"
+            onPress={() => window.open(`/ventas/facturas/imprimir/${factura.id}`, '_blank')}
           >
             Imprimir
           </Button>

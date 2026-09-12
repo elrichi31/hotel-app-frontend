@@ -1,27 +1,95 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Steps, Button, DatePicker, InputNumber, Result, Avatar } from 'antd';
+import { Button, Input, DateRangePicker, Avatar } from '@heroui/react';
+import { today, getLocalTimeZone } from '@internationalized/date';
 import { ArrowLeft, ArrowRight, CheckCircle2, Receipt, Calendar, BedDouble, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import ClientForm from '@/components/ClientForm';
 import { RoomPicker } from '@/components/RoomPicker';
 import { Section } from '@/components/ui/Section';
+import { ResultState } from '@/components/ui/ResultState';
 import RoomService from '@/services/RoomService';
 import VentasService from '@/services/VentasService';
 import { notion, viz } from '@/lib/theme';
 import { money } from '@/lib/format';
+import { toCalendarDateTime, fromCalendarDateTime } from '@/lib/dateField';
 import type { Client, Room } from '@/types/types';
 import { toast } from '@/lib/toast';
-
-const { RangePicker } = DatePicker;
 
 interface VentaWizardProps {
     token: string;
 }
 
 type SelectedCard = { id: string; price: number; priceId: number };
-type Fechas = [dayjs.Dayjs, dayjs.Dayjs | null] | null;
+type Fechas = { start: string; end: string } | null;
+
+const STEPS = [
+    { key: 'cliente', title: 'Cliente' },
+    { key: 'habitacion', title: 'Habitación y fechas' },
+    { key: 'detalle', title: 'Detalle' },
+    { key: 'realizada', title: 'Venta realizada' },
+];
+
+/** Reemplaza `Steps` de antd: HeroUI no tiene un componente de pasos equivalente. */
+const WizardSteps = ({
+    current,
+    description,
+    canGoTo,
+    onGo,
+}: {
+    current: number;
+    description: string;
+    canGoTo: (step: number) => boolean;
+    onGo: (step: number) => void;
+}) => (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {STEPS.map((step, i) => {
+            const clickable = i !== 3 && (i < current || canGoTo(i));
+            return (
+                <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <button
+                        onClick={() => clickable && onGo(i)}
+                        disabled={!clickable}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: clickable ? 'pointer' : 'default',
+                            textAlign: 'left',
+                        }}
+                    >
+                        <span
+                            style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                flexShrink: 0,
+                                background: i <= current ? viz.series1 : notion.track,
+                                color: i <= current ? '#fff' : notion.inkFaint,
+                            }}
+                        >
+                            {i + 1}
+                        </span>
+                        <span>
+                            <div style={{ fontSize: 13.5, color: i === current ? notion.ink : notion.inkFaint }}>{step.title}</div>
+                            {i === 0 && <div style={{ fontSize: 11.5, color: notion.inkFaint }}>{description}</div>}
+                        </span>
+                    </button>
+                    {i < STEPS.length - 1 && <div style={{ flex: 1, height: 1, background: notion.divider }} />}
+                </div>
+            );
+        })}
+    </div>
+);
 
 /**
  * Alta de venta en cuatro pasos horizontales: cliente, habitación y fechas,
@@ -43,7 +111,7 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
     const [ventaCreada, setVentaCreada] = useState<any>(null);
 
     const clientIds = clients.map((c) => c.id);
-    const nights = dates && dates[1] ? dates[1].startOf('day').diff(dates[0].startOf('day'), 'day') : 0;
+    const nights = dates ? dayjs(dates.end).startOf('day').diff(dayjs(dates.start).startOf('day'), 'day') : 0;
     const subtotal = selectedCards.reduce((sum, card) => sum + card.price * nights, 0);
     const total = Math.max(0, subtotal - discount);
 
@@ -87,24 +155,22 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
         });
     };
 
-    const disabledDate = (current: any) => current && current < dayjs().startOf('day');
-
     const handleTodayClick = () => {
         const now = dayjs();
         const salida = dayjs().hour(15).minute(0);
-        setDates([now, salida]);
+        setDates({ start: now.format('YYYY-MM-DDTHH:mm'), end: salida.format('YYYY-MM-DDTHH:mm') });
     };
 
     const handleConfirmar = async () => {
-        if (!token) return;
+        if (!token || !dates) return;
         const habitaciones = selectedCards.map((card) => Number(card.id));
         const precios = selectedCards.reduce((acc, card) => {
             acc[Number(card.id)] = card.priceId;
             return acc;
         }, {} as Record<number, number>);
 
-        const fecha_inicio = dates ? dates[0].format('YYYY-MM-DD HH:mm') : null;
-        const fecha_fin = dates && dates[1] ? dates[1].format('YYYY-MM-DD HH:mm') : null;
+        const fecha_inicio = dayjs(dates.start).format('YYYY-MM-DD HH:mm');
+        const fecha_fin = dayjs(dates.end).format('YYYY-MM-DD HH:mm');
 
         setCreating(true);
         try {
@@ -147,22 +213,11 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                 Registra el cliente, elige la habitación y confirma la venta
             </p>
 
-            <Steps
+            <WizardSteps
                 current={step}
-                labelPlacement="vertical"
-                onChange={(next) => {
-                    if (next === 1 && !puedeIrAHabitacion) return;
-                    if (next === 2 && !puedeIrADetalle) return;
-                    if (next === 3) return;
-                    setStep(next);
-                }}
-                items={[
-                    { title: 'Cliente', description: `${clientIds.length} agregado${clientIds.length === 1 ? '' : 's'}` },
-                    { title: 'Habitación y fechas', disabled: !puedeIrAHabitacion },
-                    { title: 'Detalle', disabled: !puedeIrADetalle },
-                    { title: 'Venta realizada', disabled: true },
-                ]}
-                style={{ marginBottom: 24 }}
+                description={`${clientIds.length} agregado${clientIds.length === 1 ? '' : 's'}`}
+                canGoTo={(i) => (i === 1 ? puedeIrAHabitacion : i === 2 ? puedeIrADetalle : true)}
+                onGo={setStep}
             />
 
             {step === 0 && (
@@ -170,11 +225,10 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                     <ClientForm clients={clients} onChange={setClients} token={token} />
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
                         <Button
-                            type="primary"
-                            disabled={!puedeIrAHabitacion}
-                            onClick={() => setStep(1)}
-                            icon={<ArrowRight size={14} />}
-                            iconPosition="end"
+                            color="primary"
+                            isDisabled={!puedeIrAHabitacion}
+                            onPress={() => setStep(1)}
+                            endContent={<ArrowRight size={14} />}
                         >
                             Continuar
                         </Button>
@@ -184,27 +238,27 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
 
             {step === 1 && (
                 <>
-                    <Button type="link" onClick={() => setStep(0)} icon={<ArrowLeft size={14} />} style={{ padding: 0, marginBottom: 12 }}>
+                    <Button variant="light" onPress={() => setStep(0)} startContent={<ArrowLeft size={14} />} className="mb-3 px-0">
                         Volver a cliente
                     </Button>
 
                     <Section title="Fechas de la estancia">
-                        <RangePicker
-                            showTime={{
-                                format: 'HH:mm',
-                                defaultValue: [dayjs().hour(14).minute(0).second(0), dayjs().hour(11).minute(0).second(0)],
-                            }}
-                            format="DD/MM/YYYY HH:mm"
-                            style={{ width: '100%' }}
-                            value={dates as any}
-                            onChange={(d) => setDates(d ? [d[0] as any, d[1] as any] : null)}
-                            disabledDate={disabledDate}
-                            renderExtraFooter={() => (
-                                <Button type="link" onClick={handleTodayClick} style={{ padding: 0 }}>
-                                    Entrada hoy a las 15:00
-                                </Button>
-                            )}
+                        <DateRangePicker
+                            aria-label="Fechas de la estancia"
+                            granularity="minute"
+                            minValue={today(getLocalTimeZone())}
+                            value={dates ? { start: toCalendarDateTime(dates.start)!, end: toCalendarDateTime(dates.end)! } : null}
+                            onChange={(range) =>
+                                setDates(
+                                    range?.start && range?.end
+                                        ? { start: fromCalendarDateTime(range.start), end: fromCalendarDateTime(range.end) }
+                                        : null
+                                )
+                            }
                         />
+                        <Button variant="light" size="sm" onPress={handleTodayClick} className="mt-2">
+                            Entrada hoy a las 15:00
+                        </Button>
                         {nights > 0 && (
                             <div style={{ marginTop: 8, fontSize: 12.5, color: notion.inkMuted }}>
                                 {nights} {nights === 1 ? 'noche' : 'noches'}
@@ -223,11 +277,10 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
                         <Button
-                            type="primary"
-                            disabled={!puedeIrADetalle}
-                            onClick={() => setStep(2)}
-                            icon={<ArrowRight size={14} />}
-                            iconPosition="end"
+                            color="primary"
+                            isDisabled={!puedeIrADetalle}
+                            onPress={() => setStep(2)}
+                            endContent={<ArrowRight size={14} />}
                         >
                             Continuar
                         </Button>
@@ -237,7 +290,7 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
 
             {step === 2 && (
                 <>
-                    <Button type="link" onClick={() => setStep(1)} icon={<ArrowLeft size={14} />} style={{ padding: 0, marginBottom: 12 }}>
+                    <Button variant="light" onPress={() => setStep(1)} startContent={<ArrowLeft size={14} />} className="mb-3 px-0">
                         Volver a habitación y fechas
                     </Button>
 
@@ -258,9 +311,12 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                                             borderTop: i === 0 ? 'none' : `1px solid ${notion.divider}`,
                                         }}
                                     >
-                                        <Avatar shape="square" size={32} style={{ background: viz.series1, fontSize: 13, flexShrink: 0 }}>
-                                            {`${c.nombre?.[0] ?? ''}${c.apellido?.[0] ?? ''}`.toUpperCase() || <User size={14} />}
-                                        </Avatar>
+                                        <Avatar
+                                            radius="sm"
+                                            style={{ width: 32, height: 32, background: viz.series1, fontSize: 13, flexShrink: 0 }}
+                                            name={`${c.nombre?.[0] ?? ''}${c.apellido?.[0] ?? ''}`.toUpperCase() || undefined}
+                                            icon={!c.nombre ? <User size={14} /> : undefined}
+                                        />
                                         <div>
                                             <div style={{ fontSize: 13.5, fontWeight: 500, color: notion.ink }}>
                                                 {c.nombre} {c.apellido}
@@ -287,7 +343,7 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                                 >
                                     <Calendar size={15} color={notion.inkFaint} />
                                     <span style={{ color: notion.ink }}>
-                                        {dates?.[0]?.format('DD/MM/YYYY HH:mm')} — {dates?.[1]?.format('DD/MM/YYYY HH:mm')}
+                                        {dates ? dayjs(dates.start).format('DD/MM/YYYY HH:mm') : ''} — {dates ? dayjs(dates.end).format('DD/MM/YYYY HH:mm') : ''}
                                     </span>
                                     <span style={{ marginLeft: 'auto', color: notion.inkMuted }}>
                                         {nights} {nights === 1 ? 'noche' : 'noches'}
@@ -367,20 +423,20 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                             </div>
 
                             <label style={{ fontSize: 13, color: notion.inkMuted, display: 'block', marginBottom: 6 }}>Descuento</label>
-                            <InputNumber
+                            <Input
+                                type="number"
                                 min={0}
-                                style={{ width: '100%' }}
-                                value={discount}
-                                onChange={(value) => setDiscount(value ?? 0)}
+                                value={discount ? String(discount) : ''}
+                                onChange={(e) => setDiscount(Number(e.target.value) || 0)}
                             />
 
                             <Button
-                                type="primary"
-                                block
-                                loading={creating}
-                                onClick={handleConfirmar}
-                                icon={<CheckCircle2 size={15} />}
-                                style={{ marginTop: 20 }}
+                                color="primary"
+                                fullWidth
+                                isLoading={creating}
+                                onPress={handleConfirmar}
+                                startContent={<CheckCircle2 size={15} />}
+                                className="mt-5"
                             >
                                 Confirmar venta
                             </Button>
@@ -390,22 +446,21 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
             )}
 
             {step === 3 && (
-                <Result
+                <ResultState
+                    status="success"
                     icon={<CheckCircle2 size={64} color={notion.ink} style={{ margin: '0 auto' }} />}
-                    title={<span style={{ color: notion.ink }}>¡Venta realizada!</span>}
-                    subTitle={
-                        <span style={{ color: notion.inkMuted }}>
-                            La venta {ventaCreada?.id ? `#${ventaCreada.id}` : ''} se registró correctamente por {money(total, 2)}.
-                        </span>
+                    title="¡Venta realizada!"
+                    subTitle={`La venta ${ventaCreada?.id ? `#${ventaCreada.id}` : ''} se registró correctamente por ${money(total, 2)}.`}
+                    extra={
+                        <>
+                            <Button variant="bordered" onPress={handleNuevaVenta}>
+                                Registrar otra venta
+                            </Button>
+                            <Button color="primary" startContent={<Receipt size={14} />} onPress={() => router.push('/ventas')}>
+                                Ver ventas
+                            </Button>
+                        </>
                     }
-                    extra={[
-                        <Button key="nueva" onClick={handleNuevaVenta}>
-                            Registrar otra venta
-                        </Button>,
-                        <Button key="ver" type="primary" icon={<Receipt size={14} />} onClick={() => router.push('/ventas')}>
-                            Ver ventas
-                        </Button>,
-                    ]}
                 />
             )}
         </div>

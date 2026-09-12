@@ -4,8 +4,7 @@ import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import VentasService from '@/services/VentasService';
 import CheckOutModal from '@/components/CheckOutModal';
-import { Spin, Alert, Empty, Table } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Spinner, Select, SelectItem } from '@heroui/react';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import {
@@ -31,7 +30,9 @@ import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
-import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
@@ -98,7 +99,8 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
   const [periodo, setPeriodo] = useState<Period>('todas');
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [busqueda, setBusqueda] = useState('');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 });
   const [isPending, startTransition] = useTransition();
   const [checkoutVenta, setCheckoutVenta] = useState<Venta | null>(null);
 
@@ -122,6 +124,7 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return ventas.filter((venta) => {
+      if (filtroEstado !== 'todos' && venta.estado !== filtroEstado) return false;
       if (!enPeriodo(venta.fecha_inicio, periodo)) return false;
       if (dateRange && !dayjs(venta.fecha_inicio).isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
       if (!q) return true;
@@ -133,7 +136,7 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
         String(venta.total).includes(q)
       );
     });
-  }, [ventas, periodo, dateRange, busqueda]);
+  }, [ventas, periodo, dateRange, busqueda, filtroEstado]);
 
   const handleDelete = async (ventaId: number) => {
     try {
@@ -166,112 +169,101 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
     setCheckoutVenta(null);
   };
 
-  if (loading) return <Spin />;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<Venta>(
+    visibles,
+    {
+      id: (a, b) => a.id - b.id,
+      fecha_inicio: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
+      created_at: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
+      subtotal: (a, b) => a.subtotal - b.subtotal,
+      total: (a, b) => a.total - b.total,
+    },
+    { column: 'created_at', direction: 'descending' }
+  );
+  const pageItems = paginate(sorted, pagination);
 
-  const columns: ColumnsType<Venta> = [
+  if (loading) return <Spinner />;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
+
+  const columns: DataTableColumn<Venta>[] = [
     {
-      title: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
-      dataIndex: 'id',
       key: 'id',
-      sorter: (a, b) => a.id - b.id,
+      header: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
+      allowsSorting: true,
       width: 80,
-      render: (id: number) => (
-        <span style={{ color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>{id}</span>
-      ),
+      render: (v) => <span style={{ color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>{v.id}</span>,
     },
     {
-      title: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
-      dataIndex: 'personas',
       key: 'cliente',
-      render: (personas: Venta['personas']) =>
-        personas[0] ? `${personas[0].nombre} ${personas[0].apellido}` : '—',
+      header: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
+      render: (v) => (v.personas[0] ? `${v.personas[0].nombre} ${v.personas[0].apellido}` : '—'),
     },
     {
-      title: <ColumnHeader icon={<Calendar size={13} />}>Fecha de inicio</ColumnHeader>,
-      dataIndex: 'fecha_inicio',
       key: 'fecha_inicio',
-      sorter: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
-      render: (text: string) => <span style={{ color: notion.inkMuted }}>{dateTime(text)}</span>,
+      header: <ColumnHeader icon={<Calendar size={13} />}>Fecha de inicio</ColumnHeader>,
+      allowsSorting: true,
+      render: (v) => <span style={{ color: notion.inkMuted }}>{dateTime(v.fecha_inicio)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Calendar size={13} />}>Fecha de fin</ColumnHeader>,
-      dataIndex: 'fecha_fin',
       key: 'fecha_fin',
-      render: (text: string) => <span style={{ color: notion.inkMuted }}>{dateTime(text)}</span>,
+      header: <ColumnHeader icon={<Calendar size={13} />}>Fecha de fin</ColumnHeader>,
+      render: (v) => <span style={{ color: notion.inkMuted }}>{dateTime(v.fecha_fin)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Clock size={13} />}>Creada</ColumnHeader>,
-      dataIndex: 'created_at',
       key: 'created_at',
-      sorter: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
-      defaultSortOrder: 'descend',
-      render: (text: string) => <span style={{ color: notion.inkFaint }}>{dateTime(text)}</span>,
+      header: <ColumnHeader icon={<Clock size={13} />}>Creada</ColumnHeader>,
+      allowsSorting: true,
+      render: (v) => <span style={{ color: notion.inkFaint }}>{dateTime(v.created_at)}</span>,
     },
     {
-      title: <ColumnHeader icon={<UserCheck size={13} />}>Registrada por</ColumnHeader>,
-      dataIndex: 'usuario',
       key: 'usuario',
-      render: (usuario: Venta['usuario']) => (
+      header: <ColumnHeader icon={<UserCheck size={13} />}>Registrada por</ColumnHeader>,
+      render: (v) => (
         <span style={{ color: notion.inkMuted }}>
-          {usuario ? `${usuario.first_name} ${usuario.last_name}` : '—'}
+          {v.usuario ? `${v.usuario.first_name} ${v.usuario.last_name}` : '—'}
         </span>
       ),
     },
     {
-      title: <ColumnHeader icon={<FileText size={13} />}># Facturas</ColumnHeader>,
-      dataIndex: 'facturas',
       key: 'facturas',
+      header: <ColumnHeader icon={<FileText size={13} />}># Facturas</ColumnHeader>,
       align: 'center',
-      render: (facturas: unknown[]) => facturas.length,
+      render: (v) => v.facturas.length,
     },
     {
-      title: <ColumnHeader icon={<DollarSign size={13} />}>Subtotal</ColumnHeader>,
-      dataIndex: 'subtotal',
       key: 'subtotal',
-      sorter: (a, b) => a.subtotal - b.subtotal,
-      render: (n: number) => (
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(n, 2)}</span>
-      ),
+      header: <ColumnHeader icon={<DollarSign size={13} />}>Subtotal</ColumnHeader>,
+      allowsSorting: true,
+      render: (v) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(v.subtotal, 2)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Percent size={13} />}>Descuento</ColumnHeader>,
-      dataIndex: 'descuento',
       key: 'descuento',
-      render: (n: number) => (
-        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(n, 2)}</span>
+      header: <ColumnHeader icon={<Percent size={13} />}>Descuento</ColumnHeader>,
+      render: (v) => (
+        <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>{money(v.descuento, 2)}</span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
-      dataIndex: 'total',
       key: 'total',
-      sorter: (a, b) => a.total - b.total,
-      render: (n: number) => (
+      header: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
+      allowsSorting: true,
+      render: (v) => (
         <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {money(n, 2)}
+          {money(v.total, 2)}
         </span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
-      dataIndex: 'estado',
       key: 'estado',
-      filters: [
-        { text: 'Reservado', value: 'reservado' },
-        { text: 'Check-in', value: 'check_in' },
-        { text: 'Check-out', value: 'check_out' },
-        { text: 'Cancelada', value: 'cancelada' },
-      ],
-      onFilter: (value, record) => record.estado === value,
-      render: (estado: EstadoVenta) => <StatusPill color={ESTADO_COLOR[estado]} label={ESTADO_LABEL[estado]} />,
+      header: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
+      render: (v) => <StatusPill color={ESTADO_COLOR[v.estado]} label={ESTADO_LABEL[v.estado]} />,
     },
     {
-      title: '',
       key: 'acciones',
-      align: 'right',
+      header: '',
+      align: 'end',
       width: 60,
-      render: (_, venta) => (
+      render: (venta) => (
         <RowActionsMenu
           actions={[
             ...(venta.estado === 'reservado'
@@ -326,35 +318,42 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
         onDateRangeChange={setDateRange}
       />
 
-      {visibles.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <Empty description="No existen ventas" />
-        </div>
-      ) : (
-        <Table<Venta>
-          dataSource={visibles}
-          columns={columns}
-          rowKey="id"
-          size="middle"
-          sticky
-          scroll={{ x: 1300 }}
-          loading={isPending}
-          pagination={{
-            ...pagination,
-            showSizeChanger: false,
-            showTotal: (total) => (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                {total} ventas
-                <PageSizeSelect
-                  value={pagination.pageSize}
-                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
-                />
-              </span>
-            ),
-            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
-          }}
-        />
-      )}
+      <div style={{ marginBottom: 14 }}>
+        <Select
+          aria-label="Estado"
+          placeholder="Estado"
+          selectedKeys={[filtroEstado]}
+          onSelectionChange={(keys) => setFiltroEstado(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-48"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos los estados</SelectItem>
+          <SelectItem key="reservado">Reservado</SelectItem>
+          <SelectItem key="check_in">Check-in</SelectItem>
+          <SelectItem key="check_out">Check-out</SelectItem>
+          <SelectItem key="cancelada">Cancelada</SelectItem>
+        </Select>
+      </div>
+
+      <DataTable<Venta>
+        ariaLabel="Ventas"
+        columns={columns}
+        rows={pageItems}
+        isLoading={isPending}
+        sortDescriptor={sortDescriptor}
+        onSortChange={(d) => startTransition(() => setSortDescriptor(d))}
+        emptyContent="No existen ventas"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="ventas"
+              pagination={pagination}
+              onChange={(next) => startTransition(() => setPagination(next))}
+            />
+          ) : null
+        }
+      />
 
       <CheckOutModal
         open={checkoutVenta !== null}

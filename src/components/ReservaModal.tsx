@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Button, Avatar } from 'antd';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Avatar } from '@heroui/react';
 import {
     User,
     Calendar,
@@ -116,79 +116,80 @@ const ReservaModal: React.FC<ReservaModalProps> = ({ isOpen, onClose, reserva })
     const initials = `${reserva.nombre?.[0] ?? ''}${reserva.apellido?.[0] ?? ''}`.toUpperCase();
 
     return (
-        <Modal
-            title={<ModalTitle icon={<Calendar size={15} />}>Detalles de la reserva #{reserva.id}</ModalTitle>}
-            open={isOpen}
-            onCancel={onClose}
-            footer={[
-                <Button key="close" onClick={onClose} style={{ borderRadius: 8 }}>
-                    Cerrar
-                </Button>,
-            ]}
-        >
-            {/* Cliente + total como cifra hero, mismo patrón que FacturaCard */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <Avatar shape="square" size={34} style={{ background: viz.series1, fontSize: 13, flexShrink: 0 }}>
-                    {initials || <User size={13} />}
-                </Avatar>
-                <div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: notion.ink }}>
-                        {reserva.nombre} {reserva.apellido}
-                    </div>
-                    {reserva.telefono && (
-                        <div style={{ fontSize: 12.5, color: notion.inkMuted, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                            <Phone size={13} />
-                            {reserva.telefono}
+        <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()} scrollBehavior="inside">
+            <ModalContent>
+                <ModalHeader>
+                    <ModalTitle icon={<Calendar size={15} />}>Detalles de la reserva #{reserva.id}</ModalTitle>
+                </ModalHeader>
+                <ModalBody>
+                    {/* Cliente + total como cifra hero, mismo patrón que FacturaCard */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <Avatar radius="sm" style={{ width: 34, height: 34, background: viz.series1, fontSize: 13, flexShrink: 0 }} name={initials || undefined} icon={!initials ? <User size={13} /> : undefined} />
+                        <div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: notion.ink }}>
+                                {reserva.nombre} {reserva.apellido}
+                            </div>
+                            {reserva.telefono && (
+                                <div style={{ fontSize: 12.5, color: notion.inkMuted, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                    <Phone size={13} />
+                                    {reserva.telefono}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
 
-            <div
-                style={{
-                    padding: '14px 16px',
-                    borderRadius: 12,
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${notion.divider}`,
-                    marginBottom: 18,
-                }}
-            >
-                <div style={{ fontSize: 11.5, color: notion.inkFaint, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                    Total de la reserva
-                </div>
-                <div style={{ fontSize: 30, fontWeight: 700, color: notion.ink, marginTop: 4, lineHeight: 1.1 }}>
-                    {money(reserva.total, 2)}
-                </div>
-                <div style={{ fontSize: 12, color: notion.inkMuted, marginTop: 4 }}>
-                    <Users size={12} style={{ marginRight: 6 }} />
-                    {reserva.numero_personas} persona{Number(reserva.numero_personas) === 1 ? '' : 's'}
-                </div>
-            </div>
+                    <div
+                        style={{
+                            padding: '14px 16px',
+                            borderRadius: 12,
+                            background: 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${notion.divider}`,
+                            marginBottom: 18,
+                        }}
+                    >
+                        <div style={{ fontSize: 11.5, color: notion.inkFaint, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                            Total de la reserva
+                        </div>
+                        <div style={{ fontSize: 30, fontWeight: 700, color: notion.ink, marginTop: 4, lineHeight: 1.1 }}>
+                            {money(reserva.total, 2)}
+                        </div>
+                        <div style={{ fontSize: 12, color: notion.inkMuted, marginTop: 4 }}>
+                            <Users size={12} style={{ marginRight: 6 }} />
+                            {reserva.numero_personas} persona{Number(reserva.numero_personas) === 1 ? '' : 's'}
+                        </div>
+                    </div>
 
-            <div style={{ marginBottom: 8 }}>
-                <SectionLabel icon={<Calendar size={13} />}>Fechas</SectionLabel>
-            </div>
-            <div style={{ borderTop: `1px solid ${notion.divider}` }}>
-                <Row icon={<Clock size={13} />} label="Fecha de creación" value={dateTime(reserva.created_at)} />
-                <Row icon={<Calendar size={13} />} label="Fecha de inicio" value={dateTime(reserva.fecha_inicio)} />
-                <Row icon={<Calendar size={13} />} label="Fecha de fin" value={dateTime(reserva.fecha_fin)} />
-            </div>
+                    <div style={{ marginBottom: 8 }}>
+                        <SectionLabel icon={<Calendar size={13} />}>Fechas</SectionLabel>
+                    </div>
+                    <div style={{ borderTop: `1px solid ${notion.divider}` }}>
+                        <Row icon={<Clock size={13} />} label="Fecha de creación" value={dateTime(reserva.created_at)} />
+                        <Row icon={<Calendar size={13} />} label="Fecha de inicio" value={dateTime(reserva.fecha_inicio)} />
+                        <Row icon={<Calendar size={13} />} label="Fecha de fin" value={dateTime(reserva.fecha_fin)} />
+                    </div>
 
-            <div style={{ marginTop: 18, marginBottom: 10 }}>
-                <SectionLabel icon={<Home size={13} />}>Habitaciones Reservadas</SectionLabel>
-            </div>
-            <div style={{ display: 'grid', gap: 10 }}>
-                {reserva.precios.map((precio: any) => (
-                    <RoomItem
-                        key={precio.id}
-                        number={precio.habitacion.numero}
-                        type={precio.habitacion.tipo}
-                        description={precio.habitacion.descripcion}
-                        price={money(precio.precio, 2)}
-                        status={precio.habitacion.estado}
-                    />
-                ))}
-            </div>
+                    <div style={{ marginTop: 18, marginBottom: 10 }}>
+                        <SectionLabel icon={<Home size={13} />}>Habitaciones Reservadas</SectionLabel>
+                    </div>
+                    <div style={{ display: 'grid', gap: 10 }}>
+                        {reserva.precios.map((precio: any) => (
+                            <RoomItem
+                                key={precio.id}
+                                number={precio.habitacion.numero}
+                                type={precio.habitacion.tipo}
+                                description={precio.habitacion.descripcion}
+                                price={money(precio.precio, 2)}
+                                status={precio.habitacion.estado}
+                            />
+                        ))}
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button variant="bordered" onPress={onClose}>
+                        Cerrar
+                    </Button>
+                </ModalFooter>
+            </ModalContent>
         </Modal>
     );
 };

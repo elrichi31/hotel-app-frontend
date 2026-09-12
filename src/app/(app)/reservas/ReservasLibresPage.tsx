@@ -1,15 +1,17 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react';
 import ReservasLibresService, { ReservaLibre, EstadoReservaLibre } from '@/services/ReservasLibresService';
-import { Spin, Alert, Empty, Table, Input } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Spinner, Input, Select, SelectItem } from '@heroui/react';
 import dayjs from 'dayjs';
-import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone } from 'lucide-react';
+import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone, Search } from 'lucide-react';
 import { notion, viz } from '@/lib/theme';
 import { money, shortDate } from '@/lib/format';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
 
 interface ReservasLibresPageProps {
@@ -53,6 +55,8 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 });
 
   useEffect(() => {
     if (!token) return;
@@ -64,9 +68,10 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return reservas;
-    return reservas.filter(
-      (r) =>
+    return reservas.filter((r) => {
+      if (filtroEstado !== 'todos' && r.estado !== filtroEstado) return false;
+      if (!q) return true;
+      return (
         String(r.id).includes(q) ||
         r.nombre.toLowerCase().includes(q) ||
         (r.apellido ?? '').toLowerCase().includes(q) ||
@@ -74,8 +79,9 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
         (r.telefono ?? '').toLowerCase().includes(q) ||
         r.origen.toLowerCase().includes(q) ||
         r.habitacion_descripcion.toLowerCase().includes(q)
-    );
-  }, [reservas, busqueda]);
+      );
+    });
+  }, [reservas, busqueda, filtroEstado]);
 
   const handleValidar = async (id: number) => {
     try {
@@ -107,15 +113,20 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
     }
   };
 
-  if (loading) return <Spin />;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<ReservaLibre>(visibles, {
+    estadia: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
+  });
+  const pageItems = paginate(sorted, pagination);
 
-  const columns: ColumnsType<ReservaLibre> = [
+  if (loading) return <Spinner />;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
+
+  const columns: DataTableColumn<ReservaLibre>[] = [
     {
-      title: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
       key: 'cliente',
+      header: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
       width: 220,
-      render: (_: any, r: ReservaLibre) => (
+      render: (r) => (
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 500, color: notion.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {`${r.nombre} ${r.apellido ?? ''}`.trim()}
@@ -137,10 +148,10 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
       ),
     },
     {
-      title: <ColumnHeader icon={<BedDouble size={13} />}>Origen / Habitación</ColumnHeader>,
       key: 'origen',
+      header: <ColumnHeader icon={<BedDouble size={13} />}>Origen / Habitación</ColumnHeader>,
       width: 200,
-      render: (_: any, r: ReservaLibre) => (
+      render: (r) => (
         <div style={{ minWidth: 0 }}>
           <div style={{ color: notion.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.origen}</div>
           <div
@@ -153,11 +164,11 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
       ),
     },
     {
-      title: <ColumnHeader icon={<Calendar size={13} />}>Estadía</ColumnHeader>,
       key: 'estadia',
+      header: <ColumnHeader icon={<Calendar size={13} />}>Estadía</ColumnHeader>,
       width: 190,
-      sorter: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
-      render: (_: any, r: ReservaLibre) => {
+      allowsSorting: true,
+      render: (r) => {
         const noches = dayjs(r.fecha_fin).diff(dayjs(r.fecha_inicio), 'day');
         return (
           <div style={{ whiteSpace: 'nowrap' }}>
@@ -172,42 +183,34 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
       },
     },
     {
-      title: <ColumnHeader icon={<Users size={13} />}>Huéspedes</ColumnHeader>,
-      dataIndex: 'numero_personas',
       key: 'numero_personas',
+      header: <ColumnHeader icon={<Users size={13} />}>Huéspedes</ColumnHeader>,
       align: 'center',
       width: 100,
+      render: (r) => r.numero_personas,
     },
     {
-      title: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
-      dataIndex: 'total',
       key: 'total',
+      header: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
       width: 110,
-      render: (n: number | null) => (
+      render: (r) => (
         <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {n != null ? money(n, 2) : '—'}
+          {r.total != null ? money(r.total, 2) : '—'}
         </span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
-      dataIndex: 'estado',
       key: 'estado',
+      header: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
       width: 150,
-      filters: [
-        { text: 'Pendiente de revisión', value: 'pendiente_revision' },
-        { text: 'Validada', value: 'validada' },
-        { text: 'Descartada', value: 'descartada' },
-      ],
-      onFilter: (value, record) => record.estado === value,
-      render: (estado: EstadoReservaLibre) => <StatusPill color={ESTADO_COLOR[estado]} label={ESTADO_LABEL[estado]} />,
+      render: (r) => <StatusPill color={ESTADO_COLOR[r.estado]} label={ESTADO_LABEL[r.estado]} />,
     },
     {
-      title: <ColumnHeader icon={<WhatsAppIcon size={13} />}>WhatsApp</ColumnHeader>,
       key: 'whatsapp',
+      header: <ColumnHeader icon={<WhatsAppIcon size={13} />}>WhatsApp</ColumnHeader>,
       align: 'center',
       width: 90,
-      render: (_: any, r: ReservaLibre) => {
+      render: (r) => {
         const link = whatsappLink(r);
         if (!link) return <span style={{ color: notion.inkFaint }}>—</span>;
         return (
@@ -218,11 +221,11 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
       },
     },
     {
-      title: '',
       key: 'acciones',
-      align: 'right',
+      header: '',
+      align: 'end',
       width: 60,
-      render: (_, reserva) => (
+      render: (reserva) => (
         <RowActionsMenu
           actions={[
             ...(reserva.estado === 'pendiente_revision'
@@ -264,31 +267,48 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Input.Search
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Input
+          isClearable
+          startContent={<Search size={14} color={notion.inkFaint} />}
           placeholder="Buscar por cliente, correo, teléfono, origen o habitación"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          allowClear
-          style={{ maxWidth: 360 }}
+          onValueChange={setBusqueda}
+          className="max-w-xs"
         />
+        <Select
+          aria-label="Estado"
+          placeholder="Estado"
+          selectedKeys={[filtroEstado]}
+          onSelectionChange={(keys) => setFiltroEstado(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-48"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos los estados</SelectItem>
+          <SelectItem key="pendiente_revision">Pendiente de revisión</SelectItem>
+          <SelectItem key="validada">Validada</SelectItem>
+          <SelectItem key="descartada">Descartada</SelectItem>
+        </Select>
       </div>
 
-      {visibles.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <Empty description="No hay reservas libres registradas" />
-        </div>
-      ) : (
-        <Table<ReservaLibre>
-          dataSource={visibles}
-          columns={columns}
-          rowKey="id"
-          size="middle"
-          sticky
-          scroll={{ x: 1120 }}
-          pagination={{ pageSize: 10, showTotal: (total) => `${total} reservas libres` }}
-        />
-      )}
+      <DataTable<ReservaLibre>
+        ariaLabel="Reservas libres"
+        columns={columns}
+        rows={pageItems}
+        sortDescriptor={sortDescriptor}
+        onSortChange={setSortDescriptor}
+        emptyContent="No hay reservas libres registradas"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="reservas libres"
+              pagination={pagination}
+              onChange={setPagination}
+            />
+          ) : null
+        }
+      />
     </div>
   );
 };

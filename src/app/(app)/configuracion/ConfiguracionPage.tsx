@@ -1,7 +1,6 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import { Spin, Alert, Input, InputNumber, Button, Upload, Avatar, Switch, Popconfirm } from 'antd';
-import type { UploadProps } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
+import { Spinner, Input, Button, Avatar, Switch, Popover, PopoverTrigger, PopoverContent } from '@heroui/react';
 import { Hotel, MapPin, Phone, Mail, Save, ImageUp, Globe, Building2, Copy, RefreshCw, KeyRound } from 'lucide-react';
 import ConfiguracionService, { Configuracion } from '@/services/ConfiguracionService';
 import { notion } from '@/lib/theme';
@@ -34,6 +33,7 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [apiKeyError, setApiKeyError] = useState(false);
   const [regenerando, setRegenerando] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -86,12 +86,14 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
     }
   };
 
-  const handleSeleccionarLogo: UploadProps['beforeUpload'] = (file) => {
+  const handleSeleccionarLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setLogoFile(file);
     const reader = new FileReader();
     reader.onload = () => setLogoPreview(reader.result as string);
     reader.readAsDataURL(file);
-    return false; // no subir automáticamente: se envía junto con "Guardar cambios"
+    e.target.value = ''; // permite volver a elegir el mismo archivo si se cancela
   };
 
   const handleGuardar = async () => {
@@ -121,8 +123,8 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
     }
   };
 
-  if (loading) return <Spin />;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  if (loading) return <Spinner />;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
 
   const logoActual = logoPreview ?? (config?.logo_url ? `${backendUrl}${config.logo_url}` : null);
 
@@ -133,38 +135,46 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
       <Section title="Marca">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
           <Avatar
-            shape="square"
-            size={64}
+            radius="sm"
+            style={{ width: 64, height: 64, background: notion.divider, flexShrink: 0 }}
             src={logoActual ?? undefined}
-            style={{ background: notion.divider, flexShrink: 0 }}
             icon={!logoActual ? <Hotel size={26} /> : undefined}
           />
-          <Upload accept="image/png,image/jpeg,image/webp,image/svg+xml" showUploadList={false} beforeUpload={handleSeleccionarLogo}>
-            <Button icon={<ImageUp size={14} />}>Cambiar logo</Button>
-          </Upload>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={handleSeleccionarLogo}
+            style={{ display: 'none' }}
+          />
+          <Button startContent={<ImageUp size={14} />} onPress={() => logoInputRef.current?.click()}>
+            Cambiar logo
+          </Button>
         </div>
 
         <label style={{ fontSize: 13, color: notion.inkMuted, display: 'block', marginBottom: 6 }}>Nombre del hotel</label>
         <Input
-          size="large"
-          prefix={<Hotel size={14} color={notion.inkFaint} />}
+          size="lg"
+          startContent={<Hotel size={14} color={notion.inkFaint} />}
           placeholder="HotelApp"
           value={nombreHotel}
-          onChange={(e) => setNombreHotel(e.target.value)}
-          style={{ marginBottom: 16 }}
+          onValueChange={setNombreHotel}
+          className="mb-4"
         />
       </Section>
 
       <Section title="Facturación">
         <label style={{ fontSize: 13, color: notion.inkMuted, display: 'block', marginBottom: 6 }}>Porcentaje de IVA</label>
-        <InputNumber
-          size="large"
+        <Input
+          type="number"
+          size="lg"
           min={0}
           max={100}
-          addonAfter="%"
-          value={porcentajeIva}
-          onChange={(v) => setPorcentajeIva(Number(v) || 0)}
-          style={{ width: 160, marginBottom: 16 }}
+          endContent={<span style={{ color: notion.inkFaint }}>%</span>}
+          value={String(porcentajeIva)}
+          onChange={(e) => setPorcentajeIva(Number(e.target.value) || 0)}
+          style={{ width: 160 }}
+          className="mb-4"
         />
         <div style={{ fontSize: 12.5, color: notion.inkFaint, marginTop: -10, marginBottom: 16 }}>
           Se aplica automáticamente a las facturas que se generan al hacer check-out.
@@ -174,29 +184,29 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: 13, color: notion.inkMuted, display: 'block', marginBottom: 6 }}>Teléfono</label>
             <Input
-              prefix={<Phone size={14} color={notion.inkFaint} />}
+              startContent={<Phone size={14} color={notion.inkFaint} />}
               placeholder="0999999999"
               value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
+              onValueChange={setTelefono}
             />
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: 13, color: notion.inkMuted, display: 'block', marginBottom: 6 }}>Correo</label>
             <Input
-              prefix={<Mail size={14} color={notion.inkFaint} />}
+              startContent={<Mail size={14} color={notion.inkFaint} />}
               placeholder="contacto@hotel.com"
               value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
+              onValueChange={setCorreo}
             />
           </div>
         </div>
 
         <label style={{ fontSize: 13, color: notion.inkMuted, display: 'block', marginTop: 16, marginBottom: 6 }}>Dirección</label>
         <Input
-          prefix={<MapPin size={14} color={notion.inkFaint} />}
+          startContent={<MapPin size={14} color={notion.inkFaint} />}
           placeholder="Av. Amazonas N11-92"
           value={direccion}
-          onChange={(e) => setDireccion(e.target.value)}
+          onValueChange={setDireccion}
         />
       </Section>
 
@@ -209,7 +219,7 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
               <div style={{ fontSize: 12, color: notion.inkFaint }}>Reservas contra las habitaciones y disponibilidad reales del hotel</div>
             </div>
           </div>
-          <Switch checked={reservasNativasActivas} onChange={setReservasNativasActivas} />
+          <Switch isSelected={reservasNativasActivas} onValueChange={setReservasNativasActivas} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: reservasLibresActivas && !apiKeyError ? `1px solid ${notion.divider}` : 'none' }}>
@@ -220,7 +230,7 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
               <div style={{ fontSize: 12, color: notion.inkFaint }}>Reservas que llegan de páginas externas; se revisan manualmente y nunca ocupan una habitación por sí solas</div>
             </div>
           </div>
-          <Switch checked={reservasLibresActivas} onChange={setReservasLibresActivas} />
+          <Switch isSelected={reservasLibresActivas} onValueChange={setReservasLibresActivas} />
         </div>
 
         {reservasLibresActivas && !apiKeyError && (
@@ -233,22 +243,33 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
               Va en el header <code>x-api-key</code> de la página externa al llamar <code>POST /reservas-libres/ingest</code>.
             </div>
             {apiKeyLoading && !apiKey ? (
-              <Spin size="small" />
+              <Spinner size="sm" />
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
-                <Input readOnly value={apiKey ?? ''} style={{ fontFamily: 'monospace', fontSize: 12.5 }} />
-                <Button icon={<Copy size={14} />} onClick={handleCopiarApiKey} disabled={!apiKey} title="Copiar" />
-                <Popconfirm
-                  title="¿Regenerar la api key?"
-                  description="La key anterior deja de funcionar de inmediato: tendrás que actualizarla en la página externa."
-                  okText="Regenerar"
-                  okButtonProps={{ danger: true }}
-                  onConfirm={handleRegenerarApiKey}
-                >
-                  <Button icon={<RefreshCw size={14} />} loading={regenerando}>
-                    Regenerar
-                  </Button>
-                </Popconfirm>
+                <Input isReadOnly value={apiKey ?? ''} style={{ fontFamily: 'monospace', fontSize: 12.5 }} />
+                <Button isIconOnly onPress={handleCopiarApiKey} isDisabled={!apiKey} title="Copiar">
+                  <Copy size={14} />
+                </Button>
+                <Popover placement="top">
+                  <PopoverTrigger>
+                    <Button startContent={<RefreshCw size={14} />} isLoading={regenerando}>
+                      Regenerar
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent>
+                    <div className="p-2 max-w-64">
+                      <div className="text-sm font-medium">¿Regenerar la api key?</div>
+                      <div className="text-xs text-default-400 mt-1">
+                        La key anterior deja de funcionar de inmediato: tendrás que actualizarla en la página externa.
+                      </div>
+                      <div className="flex justify-end gap-2 mt-3">
+                        <Button size="sm" color="danger" onPress={handleRegenerarApiKey}>
+                          Regenerar
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
           </div>
@@ -256,7 +277,7 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
       </Section>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-        <Button type="primary" size="large" icon={<Save size={16} />} loading={saving} onClick={handleGuardar}>
+        <Button color="primary" size="lg" startContent={<Save size={16} />} isLoading={saving} onPress={handleGuardar}>
           Guardar cambios
         </Button>
       </div>

@@ -1,13 +1,13 @@
 'use client'
 import React, { useState } from 'react';
-import { Table, Button, Empty } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Button } from '@heroui/react';
 import { Plus, Pencil, Trash2, IdCard, User, Globe, MapPin } from 'lucide-react';
 import ClientModal from '@/components/ClientModal';
 import { Client } from '@/types/types';
 import { notion } from '@/lib/theme';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 
 /**
  * Tabla de clientes de la venta. Controlado a propósito: la lista vive en el
@@ -50,43 +50,37 @@ const ClientForm = ({
         onChange(clients.filter((c) => c.id !== id));
     };
 
-    const columns: ColumnsType<Client> = [
+    const columns: DataTableColumn<Client>[] = [
         {
-            title: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
             key: 'cliente',
-            render: (_, c) => (
-                <div>
-                    <div style={{ color: notion.ink }}>{c.nombre} {c.apellido}</div>
-                </div>
-            ),
+            header: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
+            render: (c) => <span style={{ color: notion.ink }}>{c.nombre} {c.apellido}</span>,
         },
         {
-            title: <ColumnHeader icon={<IdCard size={13} />}>Documento</ColumnHeader>,
             key: 'documento',
-            render: (_, c) => (
+            header: <ColumnHeader icon={<IdCard size={13} />}>Documento</ColumnHeader>,
+            render: (c) => (
                 <span style={{ color: notion.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
                     {c.tipo_documento === 'pasaporte' ? 'Pasaporte' : 'Cédula'} · {c.numero_documento}
                 </span>
             ),
         },
         {
-            title: <ColumnHeader icon={<Globe size={13} />}>Ciudadanía</ColumnHeader>,
-            dataIndex: 'ciudadania',
             key: 'ciudadania',
-            render: (v: string) => <span style={{ color: notion.inkMuted }}>{v}</span>,
+            header: <ColumnHeader icon={<Globe size={13} />}>Ciudadanía</ColumnHeader>,
+            render: (c) => <span style={{ color: notion.inkMuted }}>{c.ciudadania}</span>,
         },
         {
-            title: <ColumnHeader icon={<MapPin size={13} />}>Procedencia</ColumnHeader>,
-            dataIndex: 'procedencia',
             key: 'procedencia',
-            render: (v: string) => <span style={{ color: notion.inkMuted }}>{v}</span>,
+            header: <ColumnHeader icon={<MapPin size={13} />}>Procedencia</ColumnHeader>,
+            render: (c) => <span style={{ color: notion.inkMuted }}>{c.procedencia}</span>,
         },
         {
-            title: '',
             key: 'acciones',
-            align: 'right',
+            header: '',
+            align: 'end',
             width: 60,
-            render: (_, client) => (
+            render: (client) => (
                 <RowActionsMenu
                     actions={[
                         { key: 'editar', label: 'Editar', icon: <Pencil size={14} />, onClick: () => abrirEditar(client) },
@@ -107,31 +101,17 @@ const ClientForm = ({
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <Button type="primary" icon={<Plus size={16} />} onClick={abrirCrear}>
+                <Button color="primary" startContent={<Plus size={16} />} onPress={abrirCrear}>
                     Agregar cliente
                 </Button>
             </div>
 
-            {clients.length === 0 ? (
-                <div
-                    style={{
-                        border: `1px dashed ${notion.divider}`,
-                        borderRadius: notion.radius,
-                        padding: '32px 16px',
-                    }}
-                >
-                    <Empty description="Todavía no hay clientes en esta venta" />
-                </div>
-            ) : (
-                <Table<Client>
-                    dataSource={clients}
-                    columns={columns}
-                    rowKey="id"
-                    size="middle"
-                    pagination={false}
-                    scroll={{ x: 640 }}
-                />
-            )}
+            <DataTable<Client>
+                ariaLabel="Clientes de la venta"
+                columns={columns}
+                rows={clients}
+                emptyContent="Todavía no hay clientes en esta venta"
+            />
 
             <ClientModal
                 open={isModalOpen}

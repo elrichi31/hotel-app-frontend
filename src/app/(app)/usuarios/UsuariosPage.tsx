@@ -1,10 +1,10 @@
 "use client";
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
-import { Table, Input, Alert, Spin, Empty, Button, Avatar, Popconfirm, Tooltip } from 'antd';
+import { Input, Button, Avatar, Tooltip, Select, SelectItem, Spinner } from '@heroui/react';
 import {
   Search,
   Trash2,
-  Eye,
+  Pencil,
   Plus,
   Mail,
   ShieldCheck,
@@ -14,14 +14,16 @@ import {
 } from 'lucide-react';
 import UserService from '@/services/UsersService';
 import { useRouter } from 'next/navigation';
-import type { ColumnsType } from 'antd/es/table';
 import UserModal from '@/components/UserModal';
 import { User } from '@/types/types';
 import { notion, viz } from '@/lib/theme';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
 
 interface UsersPageProps {
@@ -38,8 +40,10 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [busqueda, setBusqueda] = useState('');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [filtroRol, setFiltroRol] = useState<string>('todos');
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [filtroNotif, setFiltroNotif] = useState<string>('todos');
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 });
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -68,17 +72,21 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
+    return users.filter((u) => {
+      if (filtroRol !== 'todos' && u.role !== filtroRol) return false;
+      if (filtroEstado !== 'todos' && u.status !== filtroEstado) return false;
+      if (filtroNotif !== 'todos' && (filtroNotif === 'si') !== !!u.notificar_reservas) return false;
+      if (!q) return true;
+      return (
         u.first_name.toLowerCase().includes(q) ||
         u.last_name.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         u.role.toLowerCase().includes(q) ||
         u.status.toLowerCase().includes(q)
-    );
-  }, [users, busqueda]);
+      );
+    });
+  }, [users, busqueda, filtroRol, filtroEstado, filtroNotif]);
 
   const soloAdminActivo = (userId: number) => {
     const admins = users.filter((u) => u.role === 'admin' && u.status === 'activo');
@@ -139,22 +147,26 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
     }
   };
 
-  if (loading) return <Spin />;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<User>(
+    visibles,
+    { usuario: (a, b) => a.first_name.localeCompare(b.first_name) }
+  );
+  const pageItems = paginate(sorted, pagination);
 
-  const columns: ColumnsType<User> = [
+  if (loading) return <Spinner />;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
+
+  const columns: DataTableColumn<User>[] = [
     {
       // Nombre + apellido + usuario en una sola celda, como el perfil del sidebar
-      title: <ColumnHeader icon={<ShieldCheck size={13} />}>Usuario</ColumnHeader>,
       key: 'usuario',
-      sorter: (a, b) => a.first_name.localeCompare(b.first_name),
-      render: (_, u) => {
+      header: <ColumnHeader icon={<ShieldCheck size={13} />}>Usuario</ColumnHeader>,
+      allowsSorting: true,
+      render: (u) => {
         const initials = `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase();
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Avatar shape="square" size={30} style={{ background: avatarColor(u.id), fontSize: 12, flexShrink: 0 }}>
-              {initials || 'U'}
-            </Avatar>
+            <Avatar radius="sm" style={{ width: 30, height: 30, background: avatarColor(u.id), fontSize: 12, flexShrink: 0 }} name={initials || 'U'} />
             <div style={{ lineHeight: 1.3 }}>
               <div style={{ color: notion.ink }}>
                 {u.first_name} {u.last_name}
@@ -166,22 +178,15 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
       },
     },
     {
-      title: <ColumnHeader icon={<Mail size={13} />}>Correo</ColumnHeader>,
-      dataIndex: 'email',
       key: 'email',
-      render: (email: string) => <span style={{ color: notion.inkMuted }}>{email}</span>,
+      header: <ColumnHeader icon={<Mail size={13} />}>Correo</ColumnHeader>,
+      render: (u) => <span style={{ color: notion.inkMuted }}>{u.email}</span>,
     },
     {
-      title: <ColumnHeader icon={<Tag size={13} />}>Rol</ColumnHeader>,
-      dataIndex: 'role',
       key: 'role',
-      filters: [
-        { text: 'Admin', value: 'admin' },
-        { text: 'Usuario', value: 'user' },
-      ],
-      onFilter: (value, record) => record.role === value,
-      render: (role: string) => {
-        const isAdmin = role === 'admin';
+      header: <ColumnHeader icon={<Tag size={13} />}>Rol</ColumnHeader>,
+      render: (u) => {
+        const isAdmin = u.role === 'admin';
         const color = isAdmin ? viz.series1 : notion.inkMuted;
         return (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color, fontSize: 13.5 }}>
@@ -192,68 +197,44 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
       },
     },
     {
-      title: 'Estado',
-      dataIndex: 'status',
       key: 'status',
-      filters: [
-        { text: 'Activo', value: 'activo' },
-        { text: 'Inactivo', value: 'inactivo' },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <StatusPill color={status === 'activo' ? viz.positive : viz.negative} label={status === 'activo' ? 'Activo' : 'Inactivo'} />
+      header: 'Estado',
+      render: (u) => (
+        <StatusPill color={u.status === 'activo' ? viz.positive : viz.negative} label={u.status === 'activo' ? 'Activo' : 'Inactivo'} />
       ),
     },
     {
-      title: <ColumnHeader icon={<BellRing size={13} />}>Avisos de reservas</ColumnHeader>,
-      dataIndex: 'notificar_reservas',
       key: 'notificar_reservas',
+      header: <ColumnHeader icon={<BellRing size={13} />}>Avisos de reservas</ColumnHeader>,
       align: 'center',
       width: 130,
-      filters: [
-        { text: 'Recibe avisos', value: 'si' },
-        { text: 'No recibe', value: 'no' },
-      ],
-      onFilter: (value, record) => (value === 'si' ? !!record.notificar_reservas : !record.notificar_reservas),
-      render: (notificar: boolean) => (
-        <Tooltip title={notificar ? 'Recibe correo cuando se crea una reserva' : 'No recibe avisos de nuevas reservas'}>
-          <BellRing size={15} color={notificar ? viz.series1 : notion.inkFaint} style={{ opacity: notificar ? 1 : 0.5 }} />
+      render: (u) => (
+        <Tooltip content={u.notificar_reservas ? 'Recibe correo cuando se crea una reserva' : 'No recibe avisos de nuevas reservas'}>
+          <span style={{ display: 'inline-flex' }}>
+            <BellRing size={15} color={u.notificar_reservas ? viz.series1 : notion.inkFaint} style={{ opacity: u.notificar_reservas ? 1 : 0.5 }} />
+          </span>
         </Tooltip>
       ),
     },
     {
-      title: 'Acciones',
       key: 'acciones',
-      align: 'right',
+      header: 'Acciones',
+      align: 'end',
       width: 90,
-      render: (_, user) => (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-          <Popconfirm
-            title="¿Eliminar este usuario?"
-            okText="Eliminar"
-            cancelText="Cancelar"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => handleDelete(user.id)}
-          >
-            <Tooltip title="Eliminar">
-              <button
-                className="rounded-md transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-                style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: viz.negative, border: 'none', background: 'transparent', cursor: 'pointer' }}
-              >
-                <Trash2 size={15} />
-              </button>
-            </Tooltip>
-          </Popconfirm>
-          <Tooltip title="Editar">
-            <button
-              onClick={() => handleEdit(user)}
-              className="rounded-md transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-              style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: notion.inkMuted, border: 'none', background: 'transparent', cursor: 'pointer' }}
-            >
-              <Eye size={15} />
-            </button>
-          </Tooltip>
-        </div>
+      render: (user) => (
+        <RowActionsMenu
+          actions={[
+            { key: 'editar', label: 'Editar', icon: <Pencil size={14} />, onClick: () => handleEdit(user) },
+            {
+              key: 'eliminar',
+              label: 'Eliminar',
+              icon: <Trash2 size={14} />,
+              danger: true,
+              onClick: () => handleDelete(user.id),
+              confirm: { title: '¿Eliminar este usuario?', okText: 'Eliminar' },
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -268,56 +249,78 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
           </>
         }
         action={
-          <Button type="primary" icon={<Plus size={16} />} onClick={handleCreate}>
+          <Button color="primary" startContent={<Plus size={16} />} onPress={handleCreate}>
             Crear usuario
           </Button>
         }
       />
 
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <Input
-          allowClear
-          prefix={<Search size={14} color={notion.inkFaint} />}
+          isClearable
+          startContent={<Search size={14} color={notion.inkFaint} />}
           placeholder="Buscar por nombre, usuario, correo, rol o estado"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          style={{ maxWidth: 340 }}
+          onValueChange={setBusqueda}
+          className="max-w-xs"
         />
+        <Select
+          aria-label="Rol"
+          placeholder="Rol"
+          selectedKeys={[filtroRol]}
+          onSelectionChange={(keys) => setFiltroRol(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-36"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos los roles</SelectItem>
+          <SelectItem key="admin">Admin</SelectItem>
+          <SelectItem key="empleado">Empleado</SelectItem>
+        </Select>
+        <Select
+          aria-label="Estado"
+          placeholder="Estado"
+          selectedKeys={[filtroEstado]}
+          onSelectionChange={(keys) => setFiltroEstado(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-36"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos los estados</SelectItem>
+          <SelectItem key="activo">Activo</SelectItem>
+          <SelectItem key="inactivo">Inactivo</SelectItem>
+        </Select>
+        <Select
+          aria-label="Avisos"
+          placeholder="Avisos"
+          selectedKeys={[filtroNotif]}
+          onSelectionChange={(keys) => setFiltroNotif(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-40"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos</SelectItem>
+          <SelectItem key="si">Recibe avisos</SelectItem>
+          <SelectItem key="no">No recibe</SelectItem>
+        </Select>
       </div>
 
-      {visibles.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <Empty description="No existen usuarios" />
-        </div>
-      ) : (
-        <Table<User>
-          dataSource={visibles}
-          columns={columns}
-          rowKey="id"
-          size="middle"
-          sticky
-          loading={isPending}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: setSelectedRowKeys,
-          }}
-          pagination={{
-            ...pagination,
-            showSizeChanger: false,
-            showTotal: (total, range) => (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                Mostrando {range[0]} a {range[1]} de {total} usuarios
-                <PageSizeSelect
-                  value={pagination.pageSize}
-                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
-                />
-              </span>
-            ),
-            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
-          }}
-          scroll={{ x: 900 }}
-        />
-      )}
+      <DataTable<User>
+        ariaLabel="Usuarios"
+        columns={columns}
+        rows={pageItems}
+        isLoading={isPending}
+        sortDescriptor={sortDescriptor}
+        onSortChange={(d) => startTransition(() => setSortDescriptor(d))}
+        emptyContent="No existen usuarios"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="usuarios"
+              pagination={pagination}
+              onChange={(next) => startTransition(() => setPagination(next))}
+            />
+          ) : null
+        }
+      />
 
       <UserModal
         visible={isModalVisible}

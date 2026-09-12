@@ -3,8 +3,7 @@ import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import ReservaService from '@/services/ReservasService';
 import ReservaModal from '@/components/ReservaModal';
 import ReservasLibresPage from './ReservasLibresPage';
-import { Spin, Alert, Empty, Table, Tabs } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Spinner, Tabs, Tab, Select, SelectItem } from '@heroui/react';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import {
@@ -27,7 +26,9 @@ import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
-import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
+import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
@@ -78,7 +79,8 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodo, setPeriodo] = useState<Period>('todas');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 });
   const [isPending, startTransition] = useTransition();
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [busqueda, setBusqueda] = useState('');
@@ -104,6 +106,7 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return reservas.filter((r) => {
+      if (filtroEstado !== 'todos' && r.estado !== filtroEstado) return false;
       if (!enPeriodo(r.fecha_inicio, periodo)) return false;
       if (dateRange && !dayjs(r.fecha_inicio).isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
       if (!q) return true;
@@ -114,7 +117,7 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
         String(r.total).includes(q)
       );
     });
-  }, [reservas, periodo, dateRange, busqueda]);
+  }, [reservas, periodo, dateRange, busqueda, filtroEstado]);
 
   const handleDelete = async (reservaId: number) => {
     try {
@@ -151,78 +154,74 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
     setIsModalOpen(true);
   };
 
-  if (loading) return <Spin />;
-  if (error) return <Alert message="Error" description={error} type="error" showIcon />;
+  const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<Reserva>(visibles, {
+    id: (a, b) => a.id - b.id,
+    fecha_creacion: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
+    fecha_inicio: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
+    total: (a, b) => a.total - b.total,
+  });
+  const pageItems = paginate(sorted, pagination);
 
-  const columns: ColumnsType<Reserva> = [
+  if (loading) return <Spinner />;
+  if (error) return <div style={{ color: notion.red }}>{error}</div>;
+
+  const columns: DataTableColumn<Reserva>[] = [
     {
-      title: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
-      dataIndex: 'id',
       key: 'id',
-      sorter: (a, b) => a.id - b.id,
+      header: <ColumnHeader icon={<Hash size={13} />}>ID</ColumnHeader>,
+      allowsSorting: true,
       width: 80,
+      render: (r) => r.id,
     },
     {
-      title: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
       key: 'cliente',
-      render: (_: any, r: Reserva) => `${r.nombre} ${r.apellido}`,
+      header: <ColumnHeader icon={<User size={13} />}>Cliente</ColumnHeader>,
+      render: (r) => `${r.nombre} ${r.apellido}`,
     },
     {
-      title: <ColumnHeader icon={<Clock size={13} />}>Creada</ColumnHeader>,
-      dataIndex: 'created_at',
       key: 'fecha_creacion',
-      sorter: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
-      render: (text: string) => <span style={{ color: notion.inkFaint }}>{dateTime(text)}</span>,
+      header: <ColumnHeader icon={<Clock size={13} />}>Creada</ColumnHeader>,
+      allowsSorting: true,
+      render: (r) => <span style={{ color: notion.inkFaint }}>{dateTime(r.created_at)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Calendar size={13} />}>Entrada</ColumnHeader>,
-      dataIndex: 'fecha_inicio',
       key: 'fecha_inicio',
-      sorter: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
-      render: (text: string) => <span style={{ color: notion.inkMuted }}>{dateTime(text)}</span>,
+      header: <ColumnHeader icon={<Calendar size={13} />}>Entrada</ColumnHeader>,
+      allowsSorting: true,
+      render: (r) => <span style={{ color: notion.inkMuted }}>{dateTime(r.fecha_inicio)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Calendar size={13} />}>Salida</ColumnHeader>,
-      dataIndex: 'fecha_fin',
       key: 'fecha_fin',
-      render: (text: string) => <span style={{ color: notion.inkMuted }}>{dateTime(text)}</span>,
+      header: <ColumnHeader icon={<Calendar size={13} />}>Salida</ColumnHeader>,
+      render: (r) => <span style={{ color: notion.inkMuted }}>{dateTime(r.fecha_fin)}</span>,
     },
     {
-      title: <ColumnHeader icon={<Users size={13} />}>Huéspedes</ColumnHeader>,
-      dataIndex: 'numero_personas',
       key: 'numero_personas',
+      header: <ColumnHeader icon={<Users size={13} />}>Huéspedes</ColumnHeader>,
       align: 'center',
+      render: (r) => r.numero_personas,
     },
     {
-      title: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
-      dataIndex: 'total',
       key: 'total',
-      sorter: (a, b) => a.total - b.total,
-      render: (n: number) => (
+      header: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
+      allowsSorting: true,
+      render: (r) => (
         <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {money(n, 2)}
+          {money(r.total, 2)}
         </span>
       ),
     },
     {
-      title: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
-      dataIndex: 'estado',
       key: 'estado',
-      filters: [
-        { text: 'Pendiente', value: 'pendiente' },
-        { text: 'Confirmado', value: 'confirmado' },
-        { text: 'Aprobada', value: 'aprobada' },
-        { text: 'Cancelada', value: 'cancelada' },
-      ],
-      onFilter: (value, record) => record.estado === value,
-      render: (estado: Estado) => <StatusPill color={ESTADO_COLOR[estado]} label={estado} />,
+      header: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
+      render: (r) => <StatusPill color={ESTADO_COLOR[r.estado]} label={r.estado} />,
     },
     {
-      title: '',
       key: 'acciones',
-      align: 'right',
+      header: '',
+      align: 'end',
       width: 60,
-      render: (_, reserva) => (
+      render: (reserva) => (
         <RowActionsMenu
           actions={[
             ...(['pendiente', 'confirmado'].includes(reserva.estado)
@@ -275,35 +274,42 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
         onDateRangeChange={setDateRange}
       />
 
-      {visibles.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <Empty description="No existen reservas" />
-        </div>
-      ) : (
-        <Table<Reserva>
-          dataSource={visibles}
-          columns={columns}
-          rowKey="id"
-          size="middle"
-          sticky
-          scroll={{ x: 1100 }}
-          loading={isPending}
-          pagination={{
-            ...pagination,
-            showSizeChanger: false,
-            showTotal: (total) => (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                {total} reservas
-                <PageSizeSelect
-                  value={pagination.pageSize}
-                  onChange={(pageSize) => startTransition(() => setPagination({ current: 1, pageSize }))}
-                />
-              </span>
-            ),
-            onChange: (current, pageSize) => startTransition(() => setPagination({ current, pageSize })),
-          }}
-        />
-      )}
+      <div style={{ marginBottom: 14 }}>
+        <Select
+          aria-label="Estado"
+          placeholder="Estado"
+          selectedKeys={[filtroEstado]}
+          onSelectionChange={(keys) => setFiltroEstado(String(Array.from(keys as Set<React.Key>)[0] ?? 'todos'))}
+          className="w-48"
+          disallowEmptySelection
+        >
+          <SelectItem key="todos">Todos los estados</SelectItem>
+          <SelectItem key="pendiente">Pendiente</SelectItem>
+          <SelectItem key="confirmado">Confirmado</SelectItem>
+          <SelectItem key="aprobada">Aprobada</SelectItem>
+          <SelectItem key="cancelada">Cancelada</SelectItem>
+        </Select>
+      </div>
+
+      <DataTable<Reserva>
+        ariaLabel="Reservas"
+        columns={columns}
+        rows={pageItems}
+        isLoading={isPending}
+        sortDescriptor={sortDescriptor}
+        onSortChange={(d) => startTransition(() => setSortDescriptor(d))}
+        emptyContent="No existen reservas"
+        bottomContent={
+          visibles.length > 0 ? (
+            <TablePagination
+              totalItems={visibles.length}
+              itemLabel="reservas"
+              pagination={pagination}
+              onChange={(next) => startTransition(() => setPagination(next))}
+            />
+          ) : null
+        }
+      />
 
       {selectedReserva && (
         <ReservaModal
@@ -329,13 +335,14 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
         }
       />
 
-      <Tabs
-        defaultActiveKey="nativas"
-        items={[
-          { key: 'nativas', label: 'Nativas', children: tabNativas },
-          { key: 'libres', label: 'Libres (externas)', children: <ReservasLibresPage token={token} /> },
-        ]}
-      />
+      <Tabs aria-label="Tipo de reserva">
+        <Tab key="nativas" title="Nativas">
+          {tabNativas}
+        </Tab>
+        <Tab key="libres" title="Libres (externas)">
+          <ReservasLibresPage token={token} />
+        </Tab>
+      </Tabs>
     </div>
   );
 };

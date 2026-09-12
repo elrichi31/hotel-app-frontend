@@ -1,10 +1,11 @@
 "use client"
 import React, { useEffect, useState } from 'react';
-import { Spin, Alert } from 'antd';
+import { Spinner } from '@heroui/react';
 import ClientForm from '@/components/ClientForm';
 import VentasService from '@/services/VentasService';
 import VentaForm from '@/components/VentaForm';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { notion } from '@/lib/theme';
 import type { Client } from '@/types/types';
 
 export default function EditVenta({ params, token }: any) {
@@ -33,13 +34,13 @@ export default function EditVenta({ params, token }: any) {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Spin size="large" />
+        <Spinner size="lg" />
       </div>
     );
   }
 
   if (error) {
-    return <Alert message="Error" description={error} type="error" showIcon />;
+    return <div style={{ color: notion.red }}>{error}</div>;
   }
 
   return (
