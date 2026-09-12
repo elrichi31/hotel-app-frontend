@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { message, Popconfirm, Button, Avatar } from 'antd';
+import { Popconfirm, Button, Avatar } from 'antd';
 import {
   X,
   Pencil,
@@ -22,6 +22,7 @@ import FacturasService from '@/services/FacturasService';
 import { notion, viz } from '@/lib/theme';
 import { money, shortDate } from '@/lib/format';
 import { facturaEstadoColor, facturaEstadoLabel, EstadoFactura } from '@/lib/estados';
+import { toast } from '@/lib/toast';
 
 interface ProductoFactura {
   id: number;
@@ -115,9 +116,9 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) =
     try {
       const updated = await FacturasService.updateFactura(token, factura.id, { ...factura, estado: 'emitido' });
       onUpdate(updated);
-      message.success('Factura emitida');
+      toast.success('Factura emitida');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Error al emitir la factura');
+      toast.error(error.response?.data?.message || 'Error al emitir la factura');
     }
   };
 
@@ -125,20 +126,20 @@ const CardFactura: React.FC<CardFacturaProps> = ({ factura, onUpdate, token }) =
     try {
       const updated = await FacturasService.updateFactura(token, factura.id, { ...factura, estado: 'anulado' });
       onUpdate(updated);
-      message.success('Factura anulada');
+      toast.success('Factura anulada');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Error al anular la factura');
+      toast.error(error.response?.data?.message || 'Error al anular la factura');
     }
   };
 
   const handleOk = async (values: any) => {
     try {
       const updated = await FacturasService.updateFactura(token, factura.id, values);
-      message.success('Factura actualizada');
+      toast.success('Factura actualizada');
       setIsModalOpen(false);
       onUpdate(updated);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Error al actualizar la factura');
+      toast.error(error.response?.data?.message || 'Error al actualizar la factura');
     }
   };
 

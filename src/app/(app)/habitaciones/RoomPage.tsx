@@ -16,7 +16,7 @@ import {
   Tv,
   Users,
 } from 'lucide-react';
-import { Button, message, Table, Input, Segmented, Tooltip, Space } from 'antd';
+import { Button, Table, Input, Segmented, Tooltip, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import RoomModal from '@/components/RoomModal';
 import { notion, viz } from '@/lib/theme';
@@ -27,6 +27,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
 import type { Room, RoomPrecio } from '@/types/types';
+import { toast } from '@/lib/toast';
 
 interface RoomsPageProps {
   token: string;
@@ -57,7 +58,7 @@ export default function RoomsPage({ token }: RoomsPageProps) {
       }
     } catch (error) {
       console.error('Error fetching rooms:', error);
-      message.error('No se pudieron cargar las habitaciones');
+      toast.error('No se pudieron cargar las habitaciones');
     } finally {
       setLoading(false);
     }
@@ -84,20 +85,20 @@ export default function RoomsPage({ token }: RoomsPageProps) {
       if (editing) {
         const actualizada = await RoomService.updateRoom(editing.id, { ...editing, ...values }, token);
         setRooms((prev) => prev.map((r) => (r.id === editing.id ? actualizada : r)));
-        message.success('Habitación actualizada');
+        toast.success('Habitación actualizada');
       } else {
         const nueva = await RoomService.createRoom(
           { ...values, fechaInicioOcupacion: null, fechaFinOcupacion: null },
           token
         );
         setRooms((prev) => [...prev, nueva]);
-        message.success('Habitación creada');
+        toast.success('Habitación creada');
       }
       setIsModalOpen(false);
       setEditing(null);
     } catch (error: any) {
       console.error('Error guardando habitación:', error);
-      message.error(error?.response?.data?.message ?? 'Error al guardar la habitación');
+      toast.error(error?.response?.data?.message ?? 'Error al guardar la habitación');
     }
   };
 
@@ -106,10 +107,10 @@ export default function RoomsPage({ token }: RoomsPageProps) {
       if (!token) return;
       await RoomService.deleteRoom(room.id, token);
       setRooms((prev) => prev.filter((r) => r.id !== room.id));
-      message.success(`Habitación ${room.numero} eliminada`);
+      toast.success(`Habitación ${room.numero} eliminada`);
     } catch (error) {
       console.error('Error deleting room:', error);
-      message.error('Error al eliminar la habitación');
+      toast.error('Error al eliminar la habitación');
     }
   };
 

@@ -1,28 +1,49 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Form, Input, message, Spin } from 'antd';
-import type { FormProps } from 'antd';
+import { Button, Input, Spinner } from '@heroui/react';
+import { z } from 'zod';
+import { Eye, EyeOff } from 'lucide-react';
 import AuthService from '@/services/AuthService'; // Importa el servicio que creaste
+import { toast } from '@/lib/toast';
+import { useZodForm } from '@/lib/useZodForm';
+import { FormField } from '@/components/ui/FormField';
 
-type FieldType = {
-  first_name: string;
-  last_name: string;
-  username: string;
-  email: string;
-  password: string;
-  confirm_password?: string; // Este campo no se enviará a la API
-};
+const registerSchema = z
+  .object({
+    first_name: z.string().min(1, 'Please input your first name!'),
+    last_name: z.string().min(1, 'Please input your last name!'),
+    username: z.string().min(1, 'Please input your username!'),
+    email: z.string().min(1, 'Please input a valid email!').email('Please input a valid email!'),
+    password: z.string().min(1, 'Please input your password!'),
+    confirm_password: z.string().min(1, 'Please confirm your password!'),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    message: 'The two passwords that you entered do not match!',
+    path: ['confirm_password'],
+  });
+
+type RegisterValues = z.infer<typeof registerSchema>;
 
 const Register: React.FC = () => {
   const router = useRouter();
-  const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { control, handleSubmit } = useZodForm(registerSchema, {
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      username: '',
+      email: '',
+      password: '',
+      confirm_password: '',
+    },
+  });
 
-  const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
-    setLoading(true); // Inicia la carga
+  const onFinish = async (values: RegisterValues) => {
+    setLoading(true);
     try {
-      // Llamada al servicio de registro
       const response = await AuthService.register({
         first_name: values.first_name,
         last_name: values.last_name,
@@ -32,115 +53,93 @@ const Register: React.FC = () => {
       });
 
       if (response.error) {
-        setErrors(response.error.split(','));
-        message.error('Registration failed');
+        toast.error('Registration failed');
         setLoading(false);
         return;
       }
 
-      message.success('Registration successful');
+      toast.success('Registration successful');
       router.push('/login');
     } catch (error) {
       console.error('Error during registration:', error);
-      message.error('Registration failed');
+      toast.error('Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const onFinishFailed: FormProps<FieldType>['onFinishFailed'] = (errorInfo) => {
-    console.log('Failed:', errorInfo);
-    message.error('Registration failed');
-  };
-
   return (
     <div className="flex justify-center items-center min-h-screen">
       <div className="bg-white p-10 rounded-lg shadow-lg border border-gray-200 w-full max-w-md">
-        <Form
-          name="register"
-          onFinish={onFinish}
-          onFinishFailed={onFinishFailed}
-          autoComplete="off"
-        >
+        <form onSubmit={handleSubmit(onFinish)} noValidate autoComplete="off">
           <h2 className="text-2xl font-bold text-center mb-6">Register</h2>
-          
-          <Form.Item
-            label="First Name"
+
+          <FormField
+            control={control}
             name="first_name"
-            rules={[{ required: true, message: 'Please input your first name!' }]}
-            className="mb-4"
-          >
-            <Input className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
+            render={(field) => <Input {...field} label="First Name" className="mb-4" />}
+          />
 
-          <Form.Item
-            label="Last Name"
+          <FormField
+            control={control}
             name="last_name"
-            rules={[{ required: true, message: 'Please input your last name!' }]}
-            className="mb-4"
-          >
-            <Input className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
+            render={(field) => <Input {...field} label="Last Name" className="mb-4" />}
+          />
 
-          <Form.Item
-            label="Username"
+          <FormField
+            control={control}
             name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
-            className="mb-4"
-          >
-            <Input className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
+            render={(field) => <Input {...field} label="Username" className="mb-4" />}
+          />
 
-          <Form.Item
-            label="Email"
+          <FormField
+            control={control}
             name="email"
-            rules={[{ required: true, type: 'email', message: 'Please input a valid email!' }]}
-            className="mb-4"
-          >
-            <Input className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
+            render={(field) => <Input {...field} type="email" label="Email" className="mb-4" />}
+          />
 
-          <Form.Item
-            label="Password"
+          <FormField
+            control={control}
             name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
-            className="mb-4"
-          >
-            <Input.Password className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
+            render={(field) => (
+              <Input
+                {...field}
+                type={showPassword ? 'text' : 'password'}
+                label="Password"
+                endContent={
+                  <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-default-400">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
+                className="mb-4"
+              />
+            )}
+          />
 
-          <Form.Item
-            label="Confirm Password"
+          <FormField
+            control={control}
             name="confirm_password"
-            dependencies={['password']}
-            hasFeedback
-            rules={[
-              { required: true, message: 'Please confirm your password!' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('The two passwords that you entered do not match!'));
-                },
-              }),
-            ]}
-            className="mb-4"
-          >
-            <Input.Password className="border rounded py-2 px-4 w-full" />
-          </Form.Item>
+            render={(field) => (
+              <Input
+                {...field}
+                type={showConfirmPassword ? 'text' : 'password'}
+                label="Confirm Password"
+                endContent={
+                  <button type="button" onClick={() => setShowConfirmPassword((v) => !v)} className="text-default-400">
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
+                className="mb-4"
+              />
+            )}
+          />
 
-          <Form.Item className="mb-0 text-center">
-            <Button
-              type="primary"
-              htmlType="submit"
-              className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-              disabled={loading}
-            >
-              {loading ? <Spin /> : 'Register'}
+          <div className="text-center">
+            <Button type="submit" color="primary" isDisabled={loading}>
+              {loading ? <Spinner size="sm" color="white" /> : 'Register'}
             </Button>
-          </Form.Item>
-        </Form>
+          </div>
+        </form>
       </div>
     </div>
   );

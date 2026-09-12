@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
-import { Table, Input, message, Alert, Spin, Empty, Button, Avatar, Popconfirm, Tooltip } from 'antd';
+import { Table, Input, Alert, Spin, Empty, Button, Avatar, Popconfirm, Tooltip } from 'antd';
 import {
   Search,
   Trash2,
@@ -22,6 +22,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { toast } from '@/lib/toast';
 
 interface UsersPageProps {
   token: string;
@@ -48,7 +49,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
   useEffect(() => {
     if (!token) return;
     if (role !== 'admin') {
-      message.error('Acceso denegado. Solo los administradores pueden acceder a esta página.');
+      toast.error('Acceso denegado. Solo los administradores pueden acceder a esta página.');
       router.push('/dashboard');
       return;
     }
@@ -86,21 +87,21 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
 
   const handleDelete = async (userId: number) => {
     if (soloAdminActivo(userId)) {
-      message.warning('No se puede eliminar el único administrador activo.');
+      toast.warning('No se puede eliminar el único administrador activo.');
       return;
     }
     try {
       await UserService.deleteUser(userId, token);
-      message.success('Usuario eliminado exitosamente');
+      toast.success('Usuario eliminado exitosamente');
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch {
-      message.error('Error al eliminar el usuario');
+      toast.error('Error al eliminar el usuario');
     }
   };
 
   const handleEdit = (user: User) => {
     if (soloAdminActivo(user.id)) {
-      message.warning('No se puede editar el único administrador activo.');
+      toast.warning('No se puede editar el único administrador activo.');
       return;
     }
     setSelectedUser(user);
@@ -118,23 +119,23 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
     if (!selectedUser) return;
     try {
       const updated = await UserService.updateUser(selectedUser.id, updatedUser, token);
-      message.success('Usuario actualizado exitosamente');
+      toast.success('Usuario actualizado exitosamente');
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
       setIsModalVisible(false);
       setSelectedUser(null);
     } catch {
-      message.error('Error al actualizar el usuario');
+      toast.error('Error al actualizar el usuario');
     }
   };
 
   const handleCreateUser = async (newUser: Partial<User>) => {
     try {
       const createdUser = await UserService.createUser(newUser, token);
-      message.success('Usuario creado exitosamente');
+      toast.success('Usuario creado exitosamente');
       setUsers((prev) => [...prev, createdUser]);
       setIsModalVisible(false);
     } catch {
-      message.error('Error al crear el usuario');
+      toast.error('Error al crear el usuario');
     }
   };
 

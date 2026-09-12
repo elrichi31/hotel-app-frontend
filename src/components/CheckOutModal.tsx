@@ -1,11 +1,12 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Modal, Steps, Radio, Button, Input, InputNumber, Empty, message } from 'antd';
+import { Modal, ModalContent, ModalHeader, ModalBody, RadioGroup, Radio, Button, Input } from '@heroui/react';
 import dayjs from 'dayjs';
 import { Plus, Trash2 } from 'lucide-react';
-import { notion } from '@/lib/theme';
+import { notion, viz } from '@/lib/theme';
 import { money } from '@/lib/format';
 import VentasService from '@/services/VentasService';
+import { toast } from '@/lib/toast';
 
 /** Debe reflejar `PORCENTAJE_IVA` en hotel-app-backend/app/Helpers/Facturacion.ts. Solo para la vista previa: el monto real lo calcula el backend. */
 const IVA_PORCENTAJE = 15;
@@ -43,6 +44,37 @@ interface CheckOutModalProps {
   onClose: () => void;
   onSuccess: (result: { venta: any; factura: any }) => void;
 }
+
+const STEPS = ['Resumen', 'Cargos adicionales'];
+
+/** Reemplaza `Steps` de antd: HeroUI no tiene un componente de pasos equivalente. */
+const StepHeader = ({ current }: { current: number }) => (
+  <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+    {STEPS.map((label, i) => (
+      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+        <div
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            fontWeight: 600,
+            flexShrink: 0,
+            background: i <= current ? viz.series1 : notion.track,
+            color: i <= current ? '#fff' : notion.inkFaint,
+          }}
+        >
+          {i + 1}
+        </div>
+        <span style={{ fontSize: 13, color: i === current ? notion.ink : notion.inkFaint }}>{label}</span>
+        {i < STEPS.length - 1 && <div style={{ flex: 1, height: 1, background: notion.divider }} />}
+      </div>
+    ))}
+  </div>
+);
 
 const nochesReales = (venta: VentaCheckout | null) => {
   if (!venta) return 1;
@@ -143,113 +175,123 @@ export default function CheckOutModal({ open, venta, token, onClose, onSuccess }
     try {
       const validos = extras.filter((e) => e.descripcion.trim() && e.cantidad > 0);
       const result = await VentasService.checkOutVenta(token, venta.id, incluyeIva, validos);
-      message.success(`Check-out registrado: factura ${result.factura.numero_factura} generada`);
+      toast.success(`Check-out registrado: factura ${result.factura.numero_factura} generada`);
       onSuccess(result);
     } catch {
-      message.error('Error al registrar el check-out');
+      toast.error('Error al registrar el check-out');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal open={open} onCancel={onClose} title="Registrar check-out" width={520} footer={null} destroyOnClose>
-      <Steps
-        size="small"
-        current={step}
-        items={[{ title: 'Resumen' }, { title: 'Cargos adicionales' }]}
-        style={{ marginBottom: 20 }}
-      />
+    <Modal isOpen={open} onOpenChange={(isOpen) => !isOpen && onClose()} size="lg" scrollBehavior="inside">
+      <ModalContent>
+        <ModalHeader>Registrar check-out</ModalHeader>
+        <ModalBody className="pb-6">
+          <StepHeader current={step} />
 
-      {step === 0 && (
-        <div>
-          <div
-            style={{
-              borderTop: `1px solid ${notion.divider}`,
-              borderBottom: `1px solid ${notion.divider}`,
-              padding: '8px 0',
-              marginBottom: 16,
-            }}
-          >
-            {venta.precios.map((p, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13 }}>
-                <span>Habitación {p.habitacion.numero}</span>
-                <span style={{ color: notion.inkMuted }}>{money(p.precio, 2)} / noche</span>
+          {step === 0 && (
+            <div>
+              <div
+                style={{
+                  borderTop: `1px solid ${notion.divider}`,
+                  borderBottom: `1px solid ${notion.divider}`,
+                  padding: '8px 0',
+                  marginBottom: 16,
+                }}
+              >
+                {venta.precios.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13 }}>
+                    <span>Habitación {p.habitacion.numero}</span>
+                    <span style={{ color: notion.inkMuted }}>{money(p.precio, 2)} / noche</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, color: notion.inkMuted }}>
+                  <span>Noches (check-in → hoy)</span>
+                  <span>{noches}</span>
+                </div>
               </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, color: notion.inkMuted }}>
-              <span>Noches (check-in → hoy)</span>
-              <span>{noches}</span>
+
+              <RadioGroup
+                label="¿La tarifa ya incluye el IVA?"
+                value={incluyeIva ? 'si' : 'no'}
+                onValueChange={(v) => setIncluyeIva(v === 'si')}
+                className="mb-5"
+              >
+                <Radio value="no">No, hay que sumarle el IVA</Radio>
+                <Radio value="si">Sí, el precio ya lo incluye</Radio>
+              </RadioGroup>
+
+              <ResumenTotales preview={preview} />
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+                <Button color="primary" onPress={() => setStep(1)}>
+                  Siguiente
+                </Button>
+              </div>
             </div>
-          </div>
-
-          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>¿La tarifa ya incluye el IVA?</div>
-          <Radio.Group value={incluyeIva} onChange={(e) => setIncluyeIva(e.target.value)} style={{ marginBottom: 20 }}>
-            <Radio value={false}>No, hay que sumarle el IVA</Radio>
-            <Radio value={true}>Sí, el precio ya lo incluye</Radio>
-          </Radio.Group>
-
-          <ResumenTotales preview={preview} />
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-            <Button type="primary" onClick={() => setStep(1)} style={{ borderRadius: 8 }}>
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 1 && (
-        <div>
-          <div style={{ fontSize: 13, color: notion.inkMuted, marginBottom: 12 }}>
-            Agrega cualquier consumo extra del huésped (minibar, lavandería, servicio a la habitación...).
-          </div>
-
-          {extras.length === 0 && (
-            <Empty description="Sin cargos adicionales" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ margin: '16px 0' }} />
           )}
 
-          {extras.map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-              <Input
-                placeholder="Descripción"
-                value={item.descripcion}
-                onChange={(e) => updateExtra(idx, { descripcion: e.target.value })}
-                style={{ flex: 1 }}
-              />
-              <InputNumber
-                min={1}
-                value={item.cantidad}
-                onChange={(v) => updateExtra(idx, { cantidad: Number(v) || 1 })}
-                style={{ width: 64 }}
-              />
-              <InputNumber
-                min={0}
-                prefix="$"
-                value={item.precio_unitario}
-                onChange={(v) => updateExtra(idx, { precio_unitario: Number(v) || 0 })}
-                style={{ width: 100 }}
-              />
-              <Button type="text" danger size="small" icon={<Trash2 size={14} />} onClick={() => removeExtra(idx)} />
+          {step === 1 && (
+            <div>
+              <div style={{ fontSize: 13, color: notion.inkMuted, marginBottom: 12 }}>
+                Agrega cualquier consumo extra del huésped (minibar, lavandería, servicio a la habitación...).
+              </div>
+
+              {extras.length === 0 && (
+                <div style={{ textAlign: 'center', color: notion.inkFaint, fontSize: 13, margin: '16px 0' }}>
+                  Sin cargos adicionales
+                </div>
+              )}
+
+              {extras.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                  <Input
+                    placeholder="Descripción"
+                    value={item.descripcion}
+                    onChange={(e) => updateExtra(idx, { descripcion: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={String(item.cantidad)}
+                    onChange={(e) => updateExtra(idx, { cantidad: Number(e.target.value) || 1 })}
+                    style={{ width: 72 }}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    startContent="$"
+                    value={String(item.precio_unitario)}
+                    onChange={(e) => updateExtra(idx, { precio_unitario: Number(e.target.value) || 0 })}
+                    style={{ width: 110 }}
+                  />
+                  <Button isIconOnly variant="light" color="danger" size="sm" onPress={() => removeExtra(idx)}>
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              ))}
+
+              <Button variant="bordered" fullWidth startContent={<Plus size={14} />} onPress={addExtra} className="mb-5">
+                Agregar cargo
+              </Button>
+
+              <ResumenTotales preview={preview} />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
+                <Button variant="bordered" onPress={() => setStep(0)}>
+                  Atrás
+                </Button>
+                <Button color="primary" isLoading={loading} onPress={handleConfirm}>
+                  Confirmar check-out
+                </Button>
+              </div>
             </div>
-          ))}
-
-          <Button type="dashed" block icon={<Plus size={14} />} onClick={addExtra} style={{ marginBottom: 20 }}>
-            Agregar cargo
-          </Button>
-
-          <ResumenTotales preview={preview} />
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-            <Button onClick={() => setStep(0)} style={{ borderRadius: 8 }}>
-              Atrás
-            </Button>
-            <Button type="primary" loading={loading} onClick={handleConfirm} style={{ borderRadius: 8 }}>
-              Confirmar check-out
-            </Button>
-          </div>
-        </div>
-      )}
+          )}
+        </ModalBody>
+      </ModalContent>
     </Modal>
   );
 }

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import ClientService from '@/services/ClientService';
 import ClientModal from '@/components/ClientModal';
-import { Spin, Alert, message, Empty, Table, Button } from 'antd';
+import { Spin, Alert, Empty, Table, Button } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -15,6 +15,7 @@ import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
 import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
 
@@ -88,10 +89,10 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
   const handleDelete = async (id: number) => {
     try {
       await ClientService.deleteClient(id, token);
-      message.success('Cliente eliminado');
+      toast.success('Cliente eliminado');
       setClientes((prev) => prev.filter((c) => c.id !== id));
     } catch {
-      message.error('Error al eliminar el cliente');
+      toast.error('Error al eliminar el cliente');
     }
   };
 

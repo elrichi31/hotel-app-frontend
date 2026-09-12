@@ -4,8 +4,9 @@ import FacturasService from '@/services/FacturasService';
 import CardFactura from '@/components/FacturaCard';
 import { Plus } from 'lucide-react';
 import FacturaModal from '@/components/FacturaModal';
-import { Button, Empty, Spin, Alert, message } from 'antd';
+import { Button, Empty, Spin, Alert } from 'antd';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { toast } from '@/lib/toast';
 
 export default function FacturasVenta({ params, token }: any) {
     const [facturas, setFacturas] = useState<any[]>([]);
@@ -36,13 +37,13 @@ export default function FacturasVenta({ params, token }: any) {
             const newFactura = await FacturasService.createFactura(token, val);
             if (newFactura && typeof newFactura === 'object') {
                 setFacturas((prev) => [...prev, newFactura]);
-                message.success('Factura creada exitosamente');
+                toast.success('Factura creada exitosamente');
                 setIsModalOpen(false);
             } else {
                 throw new Error('Factura creada inválida');
             }
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al crear la factura');
+            toast.error(error.response?.data?.message || 'Error al crear la factura');
         }
     };
 

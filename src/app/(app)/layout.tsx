@@ -4,8 +4,8 @@ import Navbar from '@/components/Navbar';
 import Loading from '@/components/Loading';
 import { useSession, signOut } from 'next-auth/react';
 import axios from '../../lib/axios';
-import { message } from 'antd';
 import ConfiguracionService, { Configuracion } from '@/services/ConfiguracionService';
+import { toast } from '@/lib/toast';
 type LayoutProps = {
     children: ReactNode;
 };
@@ -56,7 +56,7 @@ const Layout = ({ children }: LayoutProps) => {
                     },
                 });
                 console.log('Logout response:', response.data);
-                message.success('Logged out successfully');
+                toast.success('Logged out successfully');
             } else {
                 console.log('No token found for logout');
             }

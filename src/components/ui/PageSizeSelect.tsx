@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Select } from 'antd';
+import { Select, SelectItem } from '@heroui/react';
 import { notion } from '@/lib/theme';
 
 /**
@@ -21,12 +21,20 @@ export function PageSizeSelect({
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 13, color: notion.inkMuted }}>Mostrar</span>
       <Select
-        size="small"
-        value={value}
-        onChange={onChange}
-        options={options.map((n) => ({ value: n, label: `${n} / página` }))}
+        size="sm"
+        aria-label="Tamaño de página"
+        selectedKeys={[String(value)]}
+        onSelectionChange={(keys) => {
+          const key = Array.from(keys as Set<React.Key>)[0];
+          if (key != null) onChange(Number(key));
+        }}
+        disallowEmptySelection
         style={{ width: 110 }}
-      />
+      >
+        {options.map((n) => (
+          <SelectItem key={n}>{`${n} / página`}</SelectItem>
+        ))}
+      </Select>
     </div>
   );
 }

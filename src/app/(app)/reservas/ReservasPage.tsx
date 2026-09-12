@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import ReservaService from '@/services/ReservasService';
 import ReservaModal from '@/components/ReservaModal';
 import ReservasLibresPage from './ReservasLibresPage';
-import { Spin, Alert, message, Empty, Table, Tabs } from 'antd';
+import { Spin, Alert, Empty, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -28,6 +28,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
 import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
 
@@ -118,30 +119,30 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
   const handleDelete = async (reservaId: number) => {
     try {
       await ReservaService.deleteReserva(reservaId, token);
-      message.success('Reserva eliminada');
+      toast.success('Reserva eliminada');
       setReservas((prev) => prev.filter((r) => r.id !== reservaId));
     } catch {
-      message.error('Error al eliminar la reserva');
+      toast.error('Error al eliminar la reserva');
     }
   };
 
   const handleAprobar = async (reservaId: number) => {
     try {
       await ReservaService.aprobarReserva(reservaId, token);
-      message.success('Reserva aprobada: se generó la venta y se ocupó la habitación');
+      toast.success('Reserva aprobada: se generó la venta y se ocupó la habitación');
       setReservas((prev) => prev.map((r) => (r.id === reservaId ? { ...r, estado: 'aprobada' } : r)));
     } catch (err: any) {
-      message.error(err?.message ?? 'Error al aprobar la reserva');
+      toast.error(err?.message ?? 'Error al aprobar la reserva');
     }
   };
 
   const handleRechazar = async (reservaId: number) => {
     try {
       await ReservaService.rechazarReserva(reservaId, token);
-      message.success('Reserva rechazada');
+      toast.success('Reserva rechazada');
       setReservas((prev) => prev.map((r) => (r.id === reservaId ? { ...r, estado: 'cancelada' } : r)));
     } catch (err: any) {
-      message.error(err?.message ?? 'Error al rechazar la reserva');
+      toast.error(err?.message ?? 'Error al rechazar la reserva');
     }
   };
 

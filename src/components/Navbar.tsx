@@ -20,15 +20,25 @@ import {
   IdCard,
   Settings,
 } from 'lucide-react';
-import type { MenuProps } from 'antd';
-import { Menu, Avatar, Layout, Drawer, Dropdown, Tooltip, Badge, Popover, message, Input } from 'antd';
+import {
+  Avatar,
+  Drawer,
+  DrawerContent,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Tooltip,
+  Badge,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  Input,
+} from '@heroui/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useMediaQuery } from 'react-responsive';
 import { notion, viz } from '@/lib/theme';
-
-const { Sider } = Layout;
-
-type MenuItem = Required<MenuProps>['items'][number];
+import { toast } from '@/lib/toast';
 
 type NavEntry = { key: string; label: string; icon: ReactNode; adminOnly?: boolean };
 
@@ -119,38 +129,6 @@ const App = ({ children, user, logout, config }: any) => {
     setDrawerVisible(false);
   };
 
-  /** Agrupado cuando hay espacio; lista plana cuando está colapsado. */
-  const buildItems = (grouped: boolean): MenuItem[] =>
-    NAV_SECTIONS.flatMap<MenuItem>((section) => {
-      const entries = section.entries.filter((e) => !e.adminOnly || isAdmin);
-      if (entries.length === 0) return [];
-      const children = entries.map((e) => ({
-        key: e.key,
-        icon: e.icon,
-        label: e.label,
-        onClick: () => navigate(e.key),
-      }));
-      return grouped
-        ? [{ key: section.title, type: 'group' as const, label: section.title, children }]
-        : children;
-    });
-
-  const userMenu: MenuProps['items'] = [
-    {
-      key: 'profile',
-      icon: <User size={16} />,
-      label: (
-        <div style={{ lineHeight: 1.3 }}>
-          <div style={{ color: notion.ink }}>{user?.first_name} {user?.last_name}</div>
-          <div style={{ fontSize: 12, color: notion.inkFaint }}>{user?.email}</div>
-        </div>
-      ),
-      disabled: true,
-    },
-    { type: 'divider' },
-    { key: 'logout', icon: <LogOut size={16} />, label: 'Cerrar sesión', onClick: logout },
-  ];
-
   const initials = ((user?.first_name?.[0] ?? '') + (user?.last_name?.[0] ?? '')).toUpperCase();
   const iconProps = { size: 17, strokeWidth: 1.75 };
   const leftColumnWidth = mobile ? undefined : collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH;
@@ -205,17 +183,81 @@ const App = ({ children, user, logout, config }: any) => {
     </div>
   );
 
+  /** Un ítem de navegación: mismo tratamiento visual que traía el Menu de antd
+   *  (itemHeight 30, radio notion.radius, fondo activo/hover con los tokens `notion`). */
+  const NavButton = ({ entry, collapsed: itemCollapsed }: { entry: NavEntry; collapsed: boolean }) => {
+    const active = selectedKey === entry.key;
+    const button = (
+      <button
+        onClick={() => navigate(entry.key)}
+        className="w-full flex items-center gap-2.5 transition-colors"
+        style={{
+          height: 30,
+          borderRadius: notion.radius,
+          padding: itemCollapsed ? 0 : '0 8px',
+          marginBottom: 1,
+          justifyContent: itemCollapsed ? 'center' : 'flex-start',
+          color: active ? notion.ink : notion.inkMuted,
+          background: active ? notion.active : 'transparent',
+          border: 'none',
+          fontSize: 14,
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          if (!active) e.currentTarget.style.background = notion.hover;
+        }}
+        onMouseLeave={(e) => {
+          if (!active) e.currentTarget.style.background = 'transparent';
+        }}
+      >
+        <span style={{ display: 'flex', flexShrink: 0 }}>{entry.icon}</span>
+        {!itemCollapsed && <span>{entry.label}</span>}
+      </button>
+    );
+    return itemCollapsed ? (
+      <Tooltip content={entry.label} placement="right">
+        {button}
+      </Tooltip>
+    ) : (
+      button
+    );
+  };
+
+  /** Agrupado cuando hay espacio; lista plana cuando está colapsado. */
+  const NavMenu = ({ grouped }: { grouped: boolean }) => (
+    <div style={{ padding: '0 8px' }}>
+      {NAV_SECTIONS.map((section) => {
+        const entries = section.entries.filter((e) => !e.adminOnly || isAdmin);
+        if (entries.length === 0) return null;
+        return (
+          <div key={section.title} style={{ marginBottom: 12 }}>
+            {grouped && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: notion.inkFaint,
+                  padding: '4px 8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {section.title}
+              </div>
+            )}
+            {entries.map((entry) => (
+              <NavButton key={entry.key} entry={entry} collapsed={!grouped} />
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const sidebarBody = (grouped: boolean) => (
     <div className="flex flex-col h-full" style={{ background: notion.sidebarBg }}>
       {sidebarHeader}
       <div className="flex-1 overflow-y-auto overflow-x-hidden mt-2">
-        {/* El colapso lo propaga el Sider por contexto; pasar `inlineCollapsed` aqui duplica el control. */}
-        <Menu
-          mode="inline"
-          selectedKeys={selectedKey ? [selectedKey] : []}
-          items={buildItems(grouped)}
-          style={{ borderInlineEnd: 'none', background: 'transparent' }}
-        />
+        <NavMenu grouped={grouped} />
       </div>
 
       <div style={{ borderTop: '1px solid ' + notion.divider }} className="p-2">
@@ -225,11 +267,11 @@ const App = ({ children, user, logout, config }: any) => {
           style={{
             color: notion.inkMuted,
             fontSize: 14,
-            justifyContent: collapsed ? 'center' : 'flex-start',
+            justifyContent: !grouped ? 'center' : 'flex-start',
           }}
         >
           <LogOut size={16} />
-          {!collapsed && <span>Cerrar sesión</span>}
+          {grouped && <span>Cerrar sesión</span>}
         </button>
       </div>
     </div>
@@ -237,7 +279,7 @@ const App = ({ children, user, logout, config }: any) => {
 
   /** Botón circular de ícono (trazo fino, estilo lucide): mismo tratamiento en todo el cluster de la derecha. */
   const IconButton = ({ icon, label, onClick }: { icon: ReactNode; label: string; onClick?: () => void }) => (
-    <Tooltip title={label}>
+    <Tooltip content={label}>
       <button
         onClick={onClick}
         aria-label={label}
@@ -259,59 +301,76 @@ const App = ({ children, user, logout, config }: any) => {
     </Tooltip>
   );
 
-  const soonMessage = (feature: string) => () => message.info(`${feature}: próximamente`);
+  const soonMessage = (feature: string) => () => toast.info(`${feature}: próximamente`);
 
   /** Cluster de acciones: actividad, notificaciones, apariencia y el avatar con menú. */
   const iconCluster = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <IconButton icon={<Activity {...iconProps} />} label="Actividad" onClick={() => router.push('/dashboard')} />
-      <Popover
-        trigger="click"
-        placement="bottomRight"
-        content={<span style={{ color: notion.inkMuted, fontSize: 13 }}>No tienes notificaciones nuevas</span>}
-      >
-        <button
-          aria-label="Notificaciones"
-          className="rounded-full transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-          style={{
-            width: 34,
-            height: 34,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: notion.inkMuted,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-          }}
-        >
-          <Badge dot color={viz.negative} offset={[-3, 3]}>
-            <Bell {...iconProps} />
-          </Badge>
-        </button>
+      <Popover placement="bottom-end">
+        <PopoverTrigger>
+          <button
+            aria-label="Notificaciones"
+            className="rounded-full transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+            style={{
+              width: 34,
+              height: 34,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: notion.inkMuted,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            <Badge content="" color="danger" placement="top-right" isDot>
+              <Bell {...iconProps} />
+            </Badge>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent>
+          <span style={{ color: notion.inkMuted, fontSize: 13, padding: 4 }}>No tienes notificaciones nuevas</span>
+        </PopoverContent>
       </Popover>
       <IconButton icon={<Sun {...iconProps} />} label="Modo claro" onClick={soonMessage('Modo claro')} />
       <IconButton icon={<Palette {...iconProps} />} label="Apariencia" onClick={soonMessage('Personalizar apariencia')} />
 
       {user && (
-        <Dropdown menu={{ items: userMenu }} trigger={['click']} placement="bottomRight">
-          <div className="cursor-pointer" style={{ position: 'relative', marginInlineStart: 6, lineHeight: 0 }}>
-            <Avatar shape="circle" size={32} style={{ background: notion.blue, color: '#fff', fontSize: 12 }}>
-              {initials || 'H'}
-            </Avatar>
-            <span
-              style={{
-                position: 'absolute',
-                right: -1,
-                bottom: -1,
-                width: 9,
-                height: 9,
-                borderRadius: 5,
-                background: viz.positive,
-                border: `2px solid ${notion.sidebarBg}`,
-              }}
-            />
-          </div>
+        <Dropdown placement="bottom-end">
+          <DropdownTrigger>
+            <div className="cursor-pointer" style={{ position: 'relative', marginInlineStart: 6, lineHeight: 0 }}>
+              <Avatar
+                name={initials || 'H'}
+                style={{ width: 32, height: 32, background: notion.blue, color: '#fff', fontSize: 12 }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: -1,
+                  bottom: -1,
+                  width: 9,
+                  height: 9,
+                  borderRadius: 5,
+                  background: viz.positive,
+                  border: `2px solid ${notion.sidebarBg}`,
+                }}
+              />
+            </div>
+          </DropdownTrigger>
+          <DropdownMenu aria-label="Cuenta" disabledKeys={['profile']} onAction={(key) => key === 'logout' && logout()}>
+            <DropdownItem key="profile" textValue="Perfil">
+              <div style={{ lineHeight: 1.3 }}>
+                <div style={{ color: notion.ink }}>
+                  {user?.first_name} {user?.last_name}
+                </div>
+                <div style={{ fontSize: 12, color: notion.inkFaint }}>{user?.email}</div>
+              </div>
+            </DropdownItem>
+            <DropdownItem key="logout" startContent={<LogOut size={16} />} color="danger">
+              Cerrar sesión
+            </DropdownItem>
+          </DropdownMenu>
         </Dropdown>
       )}
     </div>
@@ -404,10 +463,11 @@ const App = ({ children, user, logout, config }: any) => {
       </button>
 
       <Input
-        prefix={<Search size={15} strokeWidth={1.75} color={notion.inkFaint} />}
+        startContent={<Search size={15} strokeWidth={1.75} color={notion.inkFaint} />}
         placeholder="Buscar..."
-        suffix={<span style={{ fontSize: 11, color: notion.inkFaint }}>⌘K</span>}
-        onPressEnter={soonMessage('Buscador')}
+        endContent={<span style={{ fontSize: 11, color: notion.inkFaint }}>⌘K</span>}
+        onKeyDown={(e) => e.key === 'Enter' && soonMessage('Buscador')()}
+        classNames={{ inputWrapper: 'bg-transparent' }}
         style={{
           background: 'rgba(255,255,255,0.04)',
           border: `1px solid ${notion.divider}`,
@@ -427,35 +487,27 @@ const App = ({ children, user, logout, config }: any) => {
       {!mobile && toolbarCard}
 
       {mobile ? (
-        <Drawer
-          placement="left"
-          onClose={() => setDrawerVisible(false)}
-          open={drawerVisible}
-          closable={false}
-          width={260}
-          styles={{ body: { padding: 0, background: notion.sidebarBg } }}
-        >
-          {sidebarBody(true)}
+        <Drawer placement="left" isOpen={drawerVisible} onOpenChange={setDrawerVisible} size="xs" hideCloseButton>
+          <DrawerContent>{sidebarBody(true)}</DrawerContent>
         </Drawer>
       ) : (
-        <Sider
-          collapsed={collapsed}
-          width={SIDER_WIDTH}
-          collapsedWidth={SIDER_COLLAPSED_WIDTH}
-          theme="light"
+        <div
           style={{
             position: 'fixed',
             insetInlineStart: 0,
             top: 0,
             bottom: 0,
             height: '100vh',
+            width: collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH,
             background: notion.sidebarBg,
             borderInlineEnd: `1px solid ${notion.divider}`,
             zIndex: 10,
+            transition: 'width 0.2s',
+            overflow: 'hidden',
           }}
         >
           {sidebarBody(!collapsed)}
-        </Sider>
+        </div>
       )}
 
       <div

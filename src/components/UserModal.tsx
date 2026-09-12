@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Select, Button, Switch } from 'antd';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Select, SelectItem, Button, Switch } from '@heroui/react';
+import { z } from 'zod';
 import {
   User as UserIcon,
   IdCard,
@@ -13,8 +14,8 @@ import {
 import { User } from '@/types/types';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { notion } from '@/lib/theme';
-
-const { Option } = Select;
+import { useZodForm } from '@/lib/useZodForm';
+import { FormField } from '@/components/ui/FormField';
 
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: 11.5,
@@ -67,9 +68,31 @@ const ToggleRow: React.FC<ToggleRowProps> = ({ icon, title, description, checked
       <div style={{ fontSize: 13.5, color: notion.ink, fontWeight: 500 }}>{title}</div>
       <div style={{ fontSize: 12, color: notion.inkFaint, marginTop: 2, lineHeight: 1.5 }}>{description}</div>
     </div>
-    <Switch checked={checked} onChange={onChange} onClick={(_, e) => e.stopPropagation()} />
+    <Switch isSelected={checked} onValueChange={onChange} onClick={(e) => e.stopPropagation()} />
   </div>
 );
+
+const userSchema = z.object({
+  first_name: z.string().min(1, 'Por favor ingrese el nombre'),
+  last_name: z.string().min(1, 'Por favor ingrese el apellido'),
+  email: z.string().min(1, 'Por favor ingrese un correo válido').email('Por favor ingrese un correo válido'),
+  username: z.string().min(1, 'Por favor ingrese el nombre de usuario'),
+  role: z.string().min(1, 'Por favor seleccione un rol'),
+  status: z.string().min(1, 'Por favor seleccione el estado'),
+  notificar_reservas: z.boolean(),
+});
+
+type UserFormValues = z.infer<typeof userSchema>;
+
+const emptyValues: UserFormValues = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  username: '',
+  role: '',
+  status: '',
+  notificar_reservas: false,
+};
 
 interface UserModalProps {
   visible: boolean;
@@ -80,126 +103,172 @@ interface UserModalProps {
 }
 
 const UserModal: React.FC<UserModalProps> = ({ visible, onCancel, onOk, user, isEditMode }) => {
-  const [form] = Form.useForm();
+  const { control, handleSubmit, reset } = useZodForm(userSchema, { defaultValues: emptyValues });
 
   useEffect(() => {
     if (user) {
-      form.setFieldsValue(user);
+      reset({
+        first_name: user.first_name ?? '',
+        last_name: user.last_name ?? '',
+        email: user.email ?? '',
+        username: user.username ?? '',
+        role: user.role ?? '',
+        status: user.status ?? '',
+        notificar_reservas: user.notificar_reservas ?? false,
+      });
     } else {
-      form.resetFields();
+      reset(emptyValues);
     }
-  }, [user, form]);
+  }, [user, reset]);
 
-  const handleOk = async () => {
-    try {
-      const values = await form.validateFields();
-      onOk(values);
-      form.resetFields();
-    } catch (error) {
-      // Handle validation error
-    }
+  const close = () => {
+    reset(emptyValues);
+    onCancel();
   };
 
+  const submit = handleSubmit((values) => {
+    onOk(values);
+    reset(emptyValues);
+  });
+
   return (
-    <Modal
-      visible={visible}
-      title={<ModalTitle icon={<UserIcon size={15} />}>{isEditMode ? 'Editar usuario' : 'Crear usuario'}</ModalTitle>}
-      onCancel={() => {
-        form.resetFields();
-        onCancel();
-      }}
-      footer={[
-        <Button
-          key="back"
-          style={{ borderRadius: 8 }}
-          onClick={() => {
-            form.resetFields();
-            onCancel();
-          }}
-        >
-          Cancelar
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          icon={isEditMode ? <Save size={14} /> : <UserPlus size={14} />}
-          onClick={handleOk}
-          style={{ borderRadius: 8 }}
-        >
-          {isEditMode ? 'Guardar' : 'Crear'}
-        </Button>,
-      ]}
-    >
-      <Form form={form} layout="vertical" initialValues={{ notificar_reservas: false }}>
-        <p style={sectionLabelStyle}>Datos personales</p>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Form.Item
-            name="first_name"
-            label="Nombre"
-            rules={[{ required: true, message: 'Por favor ingrese el nombre' }]}
-            style={{ flex: 1 }}
-          >
-            <Input prefix={<UserIcon size={14} color={notion.inkFaint} />} placeholder="Nombre" />
-          </Form.Item>
-          <Form.Item
-            name="last_name"
-            label="Apellido"
-            rules={[{ required: true, message: 'Por favor ingrese el apellido' }]}
-            style={{ flex: 1 }}
-          >
-            <Input prefix={<UserIcon size={14} color={notion.inkFaint} />} placeholder="Apellido" />
-          </Form.Item>
-        </div>
-        <Form.Item
-          name="email"
-          label="Correo electrónico"
-          rules={[{ required: true, type: 'email', message: 'Por favor ingrese un correo válido' }]}
-        >
-          <Input prefix={<Mail size={14} color={notion.inkFaint} />} placeholder="correo@ejemplo.com" />
-        </Form.Item>
+    <Modal isOpen={visible} onOpenChange={(open) => !open && close()} scrollBehavior="inside">
+      <ModalContent>
+        <ModalHeader>
+          <ModalTitle icon={<UserIcon size={15} />}>{isEditMode ? 'Editar usuario' : 'Crear usuario'}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form id="user-form" onSubmit={submit}>
+            <p style={sectionLabelStyle}>Datos personales</p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <FormField
+                control={control}
+                name="first_name"
+                render={(field) => (
+                  <Input
+                    {...field}
+                    label="Nombre"
+                    startContent={<UserIcon size={14} color={notion.inkFaint} />}
+                    placeholder="Nombre"
+                    className="flex-1"
+                  />
+                )}
+              />
+              <FormField
+                control={control}
+                name="last_name"
+                render={(field) => (
+                  <Input
+                    {...field}
+                    label="Apellido"
+                    startContent={<UserIcon size={14} color={notion.inkFaint} />}
+                    placeholder="Apellido"
+                    className="flex-1"
+                  />
+                )}
+              />
+            </div>
+            <FormField
+              control={control}
+              name="email"
+              render={(field) => (
+                <Input
+                  {...field}
+                  type="email"
+                  label="Correo electrónico"
+                  startContent={<Mail size={14} color={notion.inkFaint} />}
+                  placeholder="correo@ejemplo.com"
+                  className="mt-4"
+                />
+              )}
+            />
 
-        <p style={sectionLabelStyle}>Acceso</p>
-        <Form.Item
-          name="username"
-          label="Nombre de usuario"
-          rules={[{ required: true, message: 'Por favor ingrese el nombre de usuario' }]}
-        >
-          <Input prefix={<IdCard size={14} color={notion.inkFaint} />} placeholder="Nombre de usuario" />
-        </Form.Item>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Form.Item
-            name="role"
-            label="Rol"
-            rules={[{ required: true, message: 'Por favor seleccione un rol' }]}
-            style={{ flex: 1 }}
-          >
-            <Select placeholder="Selecciona un rol" suffixIcon={<ShieldCheck size={14} color={notion.inkFaint} />}>
-              <Option value="admin">Admin</Option>
-              <Option value="empleado">Empleado</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="status"
-            label="Estado"
-            rules={[{ required: true, message: 'Por favor seleccione el estado' }]}
-            style={{ flex: 1 }}
-          >
-            <Select placeholder="Selecciona el estado" suffixIcon={<CheckCircle2 size={14} color={notion.inkFaint} />}>
-              <Option value="activo">Activo</Option>
-              <Option value="inactivo">Inactivo</Option>
-            </Select>
-          </Form.Item>
-        </div>
+            <p style={sectionLabelStyle}>Acceso</p>
+            <FormField
+              control={control}
+              name="username"
+              render={(field) => (
+                <Input
+                  {...field}
+                  label="Nombre de usuario"
+                  startContent={<IdCard size={14} color={notion.inkFaint} />}
+                  placeholder="Nombre de usuario"
+                />
+              )}
+            />
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <FormField
+                control={control}
+                name="role"
+                render={({ value, onChange, onBlur, isInvalid, errorMessage }) => (
+                  <Select
+                    label="Rol"
+                    placeholder="Selecciona un rol"
+                    selectedKeys={value ? [value] : []}
+                    onSelectionChange={(keys) => onChange(Array.from(keys as Set<React.Key>)[0] ?? '')}
+                    onBlur={onBlur}
+                    isInvalid={isInvalid}
+                    errorMessage={errorMessage}
+                    startContent={<ShieldCheck size={14} color={notion.inkFaint} />}
+                    className="flex-1"
+                  >
+                    <SelectItem key="admin">Admin</SelectItem>
+                    <SelectItem key="empleado">Empleado</SelectItem>
+                  </Select>
+                )}
+              />
+              <FormField
+                control={control}
+                name="status"
+                render={({ value, onChange, onBlur, isInvalid, errorMessage }) => (
+                  <Select
+                    label="Estado"
+                    placeholder="Selecciona el estado"
+                    selectedKeys={value ? [value] : []}
+                    onSelectionChange={(keys) => onChange(Array.from(keys as Set<React.Key>)[0] ?? '')}
+                    onBlur={onBlur}
+                    isInvalid={isInvalid}
+                    errorMessage={errorMessage}
+                    startContent={<CheckCircle2 size={14} color={notion.inkFaint} />}
+                    className="flex-1"
+                  >
+                    <SelectItem key="activo">Activo</SelectItem>
+                    <SelectItem key="inactivo">Inactivo</SelectItem>
+                  </Select>
+                )}
+              />
+            </div>
 
-        <p style={sectionLabelStyle}>Notificaciones</p>
-        <Form.Item name="notificar_reservas" valuePropName="checked" style={{ marginBottom: 4 }}>
-          <ToggleRow
-            icon={<BellRing size={16} color={notion.blue} />}
-            title="Avisar de nuevas reservas"
-            description="Recibirá un correo cada vez que un cliente genere una reserva en la aplicación."
-          />
-        </Form.Item>
-      </Form>
+            <p style={sectionLabelStyle}>Notificaciones</p>
+            <FormField
+              control={control}
+              name="notificar_reservas"
+              render={({ value, onChange }) => (
+                <ToggleRow
+                  icon={<BellRing size={16} color={notion.blue} />}
+                  title="Avisar de nuevas reservas"
+                  description="Recibirá un correo cada vez que un cliente genere una reserva en la aplicación."
+                  checked={value}
+                  onChange={onChange}
+                />
+              )}
+            />
+          </form>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="bordered" onPress={close}>
+            Cancelar
+          </Button>
+          <Button
+            color="primary"
+            type="submit"
+            form="user-form"
+            startContent={isEditMode ? <Save size={14} /> : <UserPlus size={14} />}
+          >
+            {isEditMode ? 'Guardar' : 'Crear'}
+          </Button>
+        </ModalFooter>
+      </ModalContent>
     </Modal>
   );
 };

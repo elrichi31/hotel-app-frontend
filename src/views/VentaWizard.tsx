@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Steps, Button, message, DatePicker, InputNumber, Result, Avatar } from 'antd';
+import { Steps, Button, DatePicker, InputNumber, Result, Avatar } from 'antd';
 import { ArrowLeft, ArrowRight, CheckCircle2, Receipt, Calendar, BedDouble, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
@@ -12,6 +12,7 @@ import VentasService from '@/services/VentasService';
 import { notion, viz } from '@/lib/theme';
 import { money } from '@/lib/format';
 import type { Client, Room } from '@/types/types';
+import { toast } from '@/lib/toast';
 
 const { RangePicker } = DatePicker;
 
@@ -55,7 +56,7 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                 if (token) setRooms(await RoomService.getAllRooms(token));
             } catch (error) {
                 console.error('Error fetching rooms:', error);
-                message.error('Error al obtener las habitaciones');
+                toast.error('Error al obtener las habitaciones');
             }
         };
         fetchRooms();
@@ -118,11 +119,11 @@ const VentaWizard: React.FC<VentaWizardProps> = ({ token }) => {
                 personas: clientIds,
             });
             setVentaCreada(creada);
-            message.success('Venta creada exitosamente 🎉');
+            toast.success('Venta creada exitosamente 🎉');
             setStep(3);
         } catch (error) {
             console.error('Error creating venta:', error);
-            message.error('Error al guardar la venta');
+            toast.error('Error al guardar la venta');
         } finally {
             setCreating(false);
         }

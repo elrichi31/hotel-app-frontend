@@ -1,12 +1,13 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Spin, Alert, message, Input, InputNumber, Button, Upload, Avatar, Switch, Popconfirm } from 'antd';
+import { Spin, Alert, Input, InputNumber, Button, Upload, Avatar, Switch, Popconfirm } from 'antd';
 import type { UploadProps } from 'antd';
 import { Hotel, MapPin, Phone, Mail, Save, ImageUp, Globe, Building2, Copy, RefreshCw, KeyRound } from 'lucide-react';
 import ConfiguracionService, { Configuracion } from '@/services/ConfiguracionService';
 import { notion } from '@/lib/theme';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Section } from '@/components/ui/Section';
+import { toast } from '@/lib/toast';
 
 interface ConfiguracionPageProps {
   token: string;
@@ -66,9 +67,9 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
     if (!apiKey) return;
     try {
       await navigator.clipboard.writeText(apiKey);
-      message.success('Api key copiada');
+      toast.success('Api key copiada');
     } catch {
-      message.error('No se pudo copiar la api key');
+      toast.error('No se pudo copiar la api key');
     }
   };
 
@@ -77,9 +78,9 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
     try {
       const nueva = await ConfiguracionService.regenerarReservasLibresApiKey(token);
       setApiKey(nueva);
-      message.success('Api key regenerada: actualízala en la página externa');
+      toast.success('Api key regenerada: actualízala en la página externa');
     } catch (error: any) {
-      message.error(error?.message ?? 'Error al regenerar la api key');
+      toast.error(error?.message ?? 'Error al regenerar la api key');
     } finally {
       setRegenerando(false);
     }
@@ -112,9 +113,9 @@ const ConfiguracionPage: React.FC<ConfiguracionPageProps> = ({ token }) => {
       setConfig(actualizado);
       setLogoFile(null);
       setLogoPreview(null);
-      message.success('Configuración actualizada');
+      toast.success('Configuración actualizada');
     } catch (error: any) {
-      message.error(error?.message ?? 'Error al guardar la configuración');
+      toast.error(error?.message ?? 'Error al guardar la configuración');
     } finally {
       setSaving(false);
     }

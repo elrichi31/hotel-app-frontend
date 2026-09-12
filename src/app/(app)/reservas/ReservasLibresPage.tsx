@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react';
 import ReservasLibresService, { ReservaLibre, EstadoReservaLibre } from '@/services/ReservasLibresService';
-import { Spin, Alert, message, Empty, Table, Input } from 'antd';
+import { Spin, Alert, Empty, Table, Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone } from 'lucide-react';
@@ -10,6 +10,7 @@ import { money, shortDate } from '@/lib/format';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { toast } from '@/lib/toast';
 
 interface ReservasLibresPageProps {
   token: string;
@@ -79,30 +80,30 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
   const handleValidar = async (id: number) => {
     try {
       await ReservasLibresService.validar(id, token);
-      message.success('Reserva libre validada');
+      toast.success('Reserva libre validada');
       setReservas((prev) => prev.map((r) => (r.id === id ? { ...r, estado: 'validada' } : r)));
     } catch (err: any) {
-      message.error(err?.message ?? 'Error al validar');
+      toast.error(err?.message ?? 'Error al validar');
     }
   };
 
   const handleDescartar = async (id: number) => {
     try {
       await ReservasLibresService.descartar(id, token);
-      message.success('Reserva libre descartada');
+      toast.success('Reserva libre descartada');
       setReservas((prev) => prev.map((r) => (r.id === id ? { ...r, estado: 'descartada' } : r)));
     } catch (err: any) {
-      message.error(err?.message ?? 'Error al descartar');
+      toast.error(err?.message ?? 'Error al descartar');
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await ReservasLibresService.delete(id, token);
-      message.success('Reserva libre eliminada');
+      toast.success('Reserva libre eliminada');
       setReservas((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      message.error('Error al eliminar la reserva libre');
+      toast.error('Error al eliminar la reserva libre');
     }
   };
 

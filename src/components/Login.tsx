@@ -3,14 +3,27 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
-import { Button, Form, Input, message } from 'antd';
-import { User, Lock, Home } from 'lucide-react';
+import { Button, Input } from '@heroui/react';
+import { z } from 'zod';
+import { User, Lock, Home, Eye, EyeOff } from 'lucide-react';
 import { notion, viz } from '@/lib/theme';
+import { toast } from '@/lib/toast';
+import { useZodForm } from '@/lib/useZodForm';
+import { FormField } from '@/components/ui/FormField';
+
+const loginSchema = z.object({
+  username: z.string().min(1, 'Por favor ingresa tu nombre de usuario'),
+  password: z.string().min(1, 'Por favor ingresa tu contraseña'),
+});
 
 const Login: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { data: session } = useSession();
+  const { control, handleSubmit } = useZodForm(loginSchema, {
+    defaultValues: { username: '', password: '' },
+  });
 
   // Redirigir al usuario si ya está autenticado
   useEffect(() => {
@@ -27,12 +40,12 @@ const Login: React.FC = () => {
     });
 
     if (responseNextAuth?.error) {
-      message.error(`Inicio de sesión fallido: ${responseNextAuth.error}`);
+      toast.error(`Inicio de sesión fallido: ${responseNextAuth.error}`);
       setLoading(false);
       return;
     }
 
-    message.success('Inicio de sesión exitoso');
+    toast.success('Inicio de sesión exitoso');
     router.push('/dashboard');
   };
 
@@ -62,33 +75,50 @@ const Login: React.FC = () => {
             Ingresa tus credenciales para acceder a tu cuenta
           </p>
 
-          <Form name="login" initialValues={{ remember: true }} onFinish={onFinish} layout="vertical" autoComplete="off">
-            <Form.Item
-              label="Nombre de usuario"
+          <form onSubmit={handleSubmit(onFinish)} noValidate autoComplete="off">
+            <FormField
+              control={control}
               name="username"
-              rules={[{ required: true, message: 'Por favor ingresa tu nombre de usuario' }]}
-            >
-              <Input prefix={<User size={14} color={notion.inkFaint} />} placeholder="Ingresa tu nombre de usuario" size="large" />
-            </Form.Item>
-            <Form.Item
-              label="Contraseña"
+              render={(field) => (
+                <Input
+                  {...field}
+                  label="Nombre de usuario"
+                  startContent={<User size={14} color={notion.inkFaint} />}
+                  placeholder="Ingresa tu nombre de usuario"
+                  size="lg"
+                  className="mb-4"
+                />
+              )}
+            />
+            <FormField
+              control={control}
               name="password"
-              rules={[{ required: true, message: 'Por favor ingresa tu contraseña' }]}
-              style={{ marginBottom: 8 }}
-            >
-              <Input.Password prefix={<Lock size={14} color={notion.inkFaint} />} placeholder="Ingresa tu contraseña" size="large" />
-            </Form.Item>
+              render={(field) => (
+                <Input
+                  {...field}
+                  type={showPassword ? 'text' : 'password'}
+                  label="Contraseña"
+                  startContent={<Lock size={14} color={notion.inkFaint} />}
+                  endContent={
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-default-400">
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                  placeholder="Ingresa tu contraseña"
+                  size="lg"
+                  className="mb-2"
+                />
+              )}
+            />
             <div style={{ textAlign: 'right', marginBottom: 20 }}>
               <a href="/request-reset" style={{ fontSize: 13, color: viz.series1 }}>
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
-            <Form.Item style={{ marginBottom: 0 }}>
-              <Button type="primary" htmlType="submit" size="large" block loading={loading}>
-                Iniciar sesión
-              </Button>
-            </Form.Item>
-          </Form>
+            <Button type="submit" color="primary" size="lg" fullWidth isLoading={loading}>
+              Iniciar sesión
+            </Button>
+          </form>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, Button, Empty } from 'antd';
+import { Spinner, Button } from '@heroui/react';
 import { Printer, ArrowLeft } from 'lucide-react';
 import FacturasService from '@/services/FacturasService';
 import ConfiguracionService, { Configuracion } from '@/services/ConfiguracionService';
@@ -67,15 +67,15 @@ export default function ImprimirFactura({ token, id }: { token: string; id: stri
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}>
-        <Spin size="large" />
+        <Spinner size="lg" />
       </div>
     );
   }
 
   if (error || !factura) {
     return (
-      <div style={{ padding: 40 }}>
-        <Empty description={error ?? 'Factura no encontrada'} />
+      <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
+        {error ?? 'Factura no encontrada'}
       </div>
     );
   }
@@ -97,10 +97,10 @@ export default function ImprimirFactura({ token, id }: { token: string; id: stri
         className="no-imprimir"
         style={{ maxWidth: 720, margin: '0 auto 16px', display: 'flex', justifyContent: 'space-between' }}
       >
-        <Button icon={<ArrowLeft size={14} />} onClick={() => router.back()}>
+        <Button startContent={<ArrowLeft size={14} />} onPress={() => router.back()}>
           Volver
         </Button>
-        <Button type="primary" icon={<Printer size={14} />} onClick={() => window.print()}>
+        <Button color="primary" startContent={<Printer size={14} />} onPress={() => window.print()}>
           Imprimir / Guardar como PDF
         </Button>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Drawer } from "antd";
+import { Button, Drawer, DrawerContent, DrawerHeader, DrawerBody } from "@heroui/react";
 import {
   CalendarRange,
   Users,
@@ -9,7 +9,6 @@ import {
   Menu as MenuIcon,
   ArrowRight,
   Home,
-  X,
   Circle,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
@@ -311,19 +310,19 @@ const PaginaPrincipal: React.FC = () => {
           <div className="hidden md:flex items-center gap-1.5">
             {status === "authenticated" ? (
               <>
-                <Button shape="round" onClick={handleDashboard}>
+                <Button radius="full" variant="bordered" onPress={handleDashboard}>
                   Dashboard
                 </Button>
-                <Button shape="round" type="primary" onClick={handleLogout}>
+                <Button radius="full" color="primary" onPress={handleLogout}>
                   Cerrar sesión
                 </Button>
               </>
             ) : (
               <>
-                <Button shape="round" type="text" onClick={handleLogin} style={{ color: notion.inkMuted }}>
+                <Button radius="full" variant="light" onPress={handleLogin} style={{ color: notion.inkMuted }}>
                   Iniciar sesión
                 </Button>
-                <Button shape="round" type="primary" className="landing-press" onClick={handleRegister}>
+                <Button radius="full" color="primary" className="landing-press" onPress={handleRegister}>
                   Comenzar gratis
                 </Button>
               </>
@@ -343,47 +342,50 @@ const PaginaPrincipal: React.FC = () => {
 
       {/* Menú lateral para dispositivos móviles */}
       <Drawer
-        title={<span style={{ color: notion.ink }}>Menú</span>}
         placement="right"
-        onClose={() => setDrawerOpen(false)}
-        open={drawerOpen}
-        closeIcon={<X size={18} color={notion.inkMuted} />}
-        width={280}
+        onOpenChange={(open) => setDrawerOpen(open)}
+        isOpen={drawerOpen}
+        size="xs"
       >
-        <div className="flex flex-col gap-1">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded-lg px-3 py-2.5 text-sm"
-              style={{ color: notion.inkMuted }}
-              onClick={() => setDrawerOpen(false)}
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-        <div className="mt-6 flex flex-col gap-3 border-t px-3 pt-6" style={{ borderColor: notion.divider }}>
-          {status === "authenticated" ? (
-            <>
-              <Button block onClick={handleDashboard}>
-                Dashboard
-              </Button>
-              <Button block type="primary" onClick={handleLogout}>
-                Cerrar sesión
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button block onClick={handleLogin}>
-                Iniciar sesión
-              </Button>
-              <Button block type="primary" onClick={handleRegister}>
-                Comenzar gratis
-              </Button>
-            </>
-          )}
-        </div>
+        <DrawerContent>
+          <DrawerHeader style={{ color: notion.ink }}>Menú</DrawerHeader>
+          <DrawerBody>
+            <div className="flex flex-col gap-1">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-lg px-3 py-2.5 text-sm"
+                  style={{ color: notion.inkMuted }}
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-col gap-3 border-t px-3 pt-6" style={{ borderColor: notion.divider }}>
+              {status === "authenticated" ? (
+                <>
+                  <Button fullWidth variant="bordered" onPress={handleDashboard}>
+                    Dashboard
+                  </Button>
+                  <Button fullWidth color="primary" onPress={handleLogout}>
+                    Cerrar sesión
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button fullWidth variant="bordered" onPress={handleLogin}>
+                    Iniciar sesión
+                  </Button>
+                  <Button fullWidth color="primary" onPress={handleRegister}>
+                    Comenzar gratis
+                  </Button>
+                </>
+              )}
+            </div>
+          </DrawerBody>
+        </DrawerContent>
       </Drawer>
 
       <main>
@@ -439,17 +441,16 @@ const PaginaPrincipal: React.FC = () => {
             <Reveal delay={280}>
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Button
-                  type="primary"
-                  size="large"
+                  color="primary"
+                  size="lg"
                   className="landing-press"
-                  onClick={handleRegister}
-                  icon={<ArrowRight size={16} />}
-                  iconPosition="end"
+                  onPress={handleRegister}
+                  endContent={<ArrowRight size={16} />}
                 >
                   Comenzar gratis
                 </Button>
                 <a href="#pricing">
-                  <Button size="large" className="landing-press">
+                  <Button variant="bordered" size="lg" className="landing-press">
                     Ver planes
                   </Button>
                 </a>
@@ -616,11 +617,12 @@ const PaginaPrincipal: React.FC = () => {
                       ))}
                     </ul>
                     <Button
-                      block
-                      size="large"
-                      type={plan.highlight ? "primary" : "default"}
+                      fullWidth
+                      size="lg"
+                      color={plan.highlight ? "primary" : "default"}
+                      variant={plan.highlight ? "solid" : "bordered"}
                       className="landing-press mt-7"
-                      onClick={handleRegister}
+                      onPress={handleRegister}
                     >
                       {plan.price === "Personalizado" ? "Contactar ventas" : "Elegir plan"}
                     </Button>
@@ -650,12 +652,11 @@ const PaginaPrincipal: React.FC = () => {
             </p>
             <div className="mt-9">
               <Button
-                type="primary"
-                size="large"
+                color="primary"
+                size="lg"
                 className="landing-press"
-                onClick={handleRegister}
-                icon={<ArrowRight size={16} />}
-                iconPosition="end"
+                onPress={handleRegister}
+                endContent={<ArrowRight size={16} />}
               >
                 Comenzar gratis
               </Button>

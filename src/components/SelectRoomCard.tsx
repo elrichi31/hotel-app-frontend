@@ -1,7 +1,5 @@
-import { Tag, Select } from 'antd';
+import { Chip, Select, SelectItem } from '@heroui/react';
 import React, { useState, useEffect } from 'react';
-
-const { Option } = Select;
 
 const SelectRoomCard = ({ room, onSelect, isSelected, precios, noTags }: any) => {
     const [selectedPrice, setSelectedPrice] = useState(room.precios && room.precios.length > 0 ? room.precios[0].precio : null);
@@ -37,9 +35,11 @@ const SelectRoomCard = ({ room, onSelect, isSelected, precios, noTags }: any) =>
         }
     };
 
-    const handlePriceChange = (value: any, option: any) => {
-        setSelectedPrice(value);
-        setSelectedPriceId(option.key);
+    const handlePriceChange = (key: React.Key | null) => {
+        const precio = room.precios.find((p: any) => String(p.id) === String(key));
+        if (!precio) return;
+        setSelectedPrice(precio.precio);
+        setSelectedPriceId(precio.id);
     };
 
     return (
@@ -53,7 +53,7 @@ const SelectRoomCard = ({ room, onSelect, isSelected, precios, noTags }: any) =>
                     {
                         precios || noTags ? null :
                             <div>
-                                {room.estado === 'Libre' ? (<Tag color="green">Libre</Tag>) : (<Tag color="orange">Ocupado</Tag>)}
+                                {room.estado === 'Libre' ? (<Chip color="success">Libre</Chip>) : (<Chip color="warning">Ocupado</Chip>)}
                             </div>
                     }
                 </div>
@@ -62,14 +62,15 @@ const SelectRoomCard = ({ room, onSelect, isSelected, precios, noTags }: any) =>
                 <p>Descripción: {room.descripcion}</p>
             </div>
             <Select
-                value={selectedPrice}
-                onChange={handlePriceChange}
+                selectedKeys={selectedPriceId != null ? [String(selectedPriceId)] : []}
+                onSelectionChange={(keys) => handlePriceChange(Array.from(keys as Set<React.Key>)[0] ?? null)}
                 className="w-full mt-3"
+                aria-label="Precio"
             >
                 {room.precios.map((precio: any) => (
-                    <Option key={precio.id} value={precio.precio}>
-                        {precio.numero_personas} personas: ${precio.precio}
-                    </Option>
+                    <SelectItem key={precio.id}>
+                        {`${precio.numero_personas} personas: $${precio.precio}`}
+                    </SelectItem>
                 ))}
             </Select>
         </div>

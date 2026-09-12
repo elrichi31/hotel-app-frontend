@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from 'react';
-import { Input, Button, message, Result } from 'antd';
+import { Input, Button } from '@heroui/react';
+import { ResultState } from '@/components/ui/ResultState';
+import { toast } from '@/lib/toast';
 
 export default function RequestResetPage() {
   const [email, setEmail] = useState<string>('');
@@ -19,14 +21,14 @@ export default function RequestResetPage() {
       });
 
       if (res.ok) {
-        message.success('Link de reseteo enviado. Revisa tu correo electrónico.');
+        toast.success('Link de reseteo enviado. Revisa tu correo electrónico.');
         setResetSent(true); // Cambia el estado para mostrar el resultado
       } else {
         const data = await res.json();
-        message.error(data.message || 'Error al solicitar el reseteo.');
+        toast.error(data.message || 'Error al solicitar el reseteo.');
       }
     } catch (error) {
-      message.error('Error al procesar la solicitud.');
+      toast.error('Error al procesar la solicitud.');
     } finally {
       setLoading(false);
     }
@@ -42,24 +44,23 @@ export default function RequestResetPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mb-4"
-            style={{ marginBottom: '1rem' }}
           />
           <Button
-            type="primary"
-            onClick={handleRequestReset}
-            loading={loading}
+            color="primary"
+            onPress={handleRequestReset}
+            isLoading={loading}
             className="w-full"
           >
             Enviar Enlace de Reseteo
           </Button>
         </div>
       ) : (
-        <Result
+        <ResultState
           status="success"
           title="Solicitud Enviada Exitosamente"
           subTitle="Hemos enviado un enlace de reseteo de contraseña a su correo electrónico. Por favor, revise su bandeja de entrada."
           extra={
-            <Button type="primary" onClick={() => setResetSent(false)}>
+            <Button color="primary" onPress={() => setResetSent(false)}>
               Volver
             </Button>
           }

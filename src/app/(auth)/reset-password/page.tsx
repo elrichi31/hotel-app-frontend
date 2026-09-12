@@ -1,8 +1,10 @@
 "use client";
 import React, { useState, useEffect, Suspense } from 'react';
-import { Input, Button, message } from 'antd';
+import { Input, Button } from '@heroui/react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
+import { toast } from '@/lib/toast';
 
 function ResetPasswordPageContent() {
   const router = useRouter();
@@ -11,6 +13,8 @@ function ResetPasswordPageContent() {
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -18,7 +22,7 @@ function ResetPasswordPageContent() {
       if (queryToken) {
         setToken(queryToken);
       } else {
-        message.error('Token inválido o no proporcionado.');
+        toast.error('Token inválido o no proporcionado.');
         router.push('/request-reset');
       }
     }
@@ -30,7 +34,7 @@ function ResetPasswordPageContent() {
     }
 
     if (password !== confirmPassword) {
-      message.error('Las contraseñas no coinciden.');
+      toast.error('Las contraseñas no coinciden.');
       return;
     }
 
@@ -50,14 +54,14 @@ function ResetPasswordPageContent() {
       });
 
       if (res.ok) {
-        message.success('Contraseña restablecida con éxito.');
+        toast.success('Contraseña restablecida con éxito.');
         router.push('/login');
       } else {
         const data = await res.json();
-        message.error(data.message || 'Error al restablecer la contraseña.');
+        toast.error(data.message || 'Error al restablecer la contraseña.');
       }
     } catch (error) {
-      message.error('Error al procesar la solicitud.');
+      toast.error('Error al procesar la solicitud.');
     } finally {
       setLoading(false);
     }
@@ -67,22 +71,34 @@ function ResetPasswordPageContent() {
     <div className="flex justify-center items-center h-screen">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-sm">
         <h1 className="text-2xl mb-4">Restablecer Contraseña</h1>
-        <Input.Password
+        <Input
+          type={showPassword ? 'text' : 'password'}
           placeholder="Ingrese su nueva contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="mb-4"
+          endContent={
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-default-400">
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          }
         />
-        <Input.Password
+        <Input
+          type={showConfirmPassword ? 'text' : 'password'}
           placeholder="Confirme su nueva contraseña"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           className="mb-4"
+          endContent={
+            <button type="button" onClick={() => setShowConfirmPassword((v) => !v)} className="text-default-400">
+              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          }
         />
         <Button
-          type="primary"
-          onClick={handleResetPassword}
-          loading={loading}
+          color="primary"
+          onPress={handleResetPassword}
+          isLoading={loading}
           className="w-full"
         >
           Restablecer Contraseña

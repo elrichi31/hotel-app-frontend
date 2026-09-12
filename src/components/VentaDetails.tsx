@@ -1,13 +1,14 @@
 'use client'
 import React from 'react';
-import { Card, message, Popconfirm } from 'antd';
+import { Card, Popconfirm } from 'antd';
 import { Pencil, X, Receipt } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from '@/lib/toast';
 
 const VentaDetails = ({ venta, onDelete }: any) => {
   const handleDelete = () => {
     onDelete(venta.id);
-    message.success('Venta eliminada correctamente');
+    toast.success('Venta eliminada correctamente');
   };
 
   const popConfirm = () => {

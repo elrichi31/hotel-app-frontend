@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Select, Button, message, Tag } from 'antd';
+import { Modal, ModalContent, ModalHeader, ModalBody, Input, Select, SelectItem, Button, Chip } from '@heroui/react';
+import { z } from 'zod';
 import {
   Search,
   User,
@@ -14,9 +15,29 @@ import ClientService from '@/services/ClientService';
 import { Client } from '@/types/types';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { notion } from '@/lib/theme';
+import { toast } from '@/lib/toast';
+import { useZodForm } from '@/lib/useZodForm';
+import { FormField } from '@/components/ui/FormField';
 
-const { Item } = Form;
-const { Option } = Select;
+const clientSchema = z.object({
+  nombre: z.string().min(1, 'Ingresa el nombre'),
+  apellido: z.string().min(1, 'Ingresa el apellido'),
+  tipo_documento: z.string().min(1, 'Selecciona el tipo'),
+  numero_documento: z.string().min(1, 'Ingresa el número de documento'),
+  ciudadania: z.string().min(1, 'Ingresa la ciudadanía'),
+  procedencia: z.string().min(1, 'Ingresa la procedencia'),
+});
+
+type ClientFormValues = z.infer<typeof clientSchema>;
+
+const emptyValues: ClientFormValues = {
+  nombre: '',
+  apellido: '',
+  tipo_documento: '',
+  numero_documento: '',
+  ciudadania: '',
+  procedencia: '',
+};
 
 /**
  * Alta/edición de un cliente para una venta. Sin fila en edición (`initial`
@@ -36,7 +57,9 @@ export default function ClientModal({
   initial: Client | null;
   token: string;
 }) {
-  const [form] = Form.useForm();
+  const { control, handleSubmit, reset, getValues, setValue } = useZodForm(clientSchema, {
+    defaultValues: emptyValues,
+  });
   const [validating, setValidating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingId, setExistingId] = useState<number | null>(null);
@@ -45,127 +68,163 @@ export default function ClientModal({
 
   useEffect(() => {
     if (!open) return;
-    form.resetFields();
     setExistingId(initial?.id ?? null);
-    if (initial) form.setFieldsValue(initial);
-  }, [open, initial, form]);
+    reset(initial ?? emptyValues);
+  }, [open, initial, reset]);
 
   const handleValidar = async () => {
-    const cedula = form.getFieldValue('numero_documento');
+    const cedula = getValues('numero_documento');
     if (!cedula) {
-      message.warning('Ingresa el número de documento primero');
+      toast.warning('Ingresa el número de documento primero');
       return;
     }
     setValidating(true);
     try {
       const cliente = await ClientService.getClientByCedula(cedula, token);
-      form.setFieldsValue(cliente);
+      reset(cliente);
       setExistingId(cliente.id);
-      message.success('Cliente encontrado: se enlazará sin duplicarlo');
+      toast.success('Cliente encontrado: se enlazará sin duplicarlo');
     } catch (error: any) {
       setExistingId(null);
-      message.info(error.message || 'No se encontró ningún cliente con esta cédula. Completa sus datos para crearlo.');
+      toast.info(error.message || 'No se encontró ningún cliente con esta cédula. Completa sus datos para crearlo.');
     } finally {
       setValidating(false);
     }
   };
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: ClientFormValues) => {
     setSaving(true);
     try {
       if (existingId) {
         const updated = await ClientService.updateClient(existingId, values, token);
         onSubmit({ ...updated, id: existingId } as Client);
-        message.success(editando ? 'Cliente actualizado' : 'Cliente enlazado a la venta');
+        toast.success(editando ? 'Cliente actualizado' : 'Cliente enlazado a la venta');
       } else {
         const payload = { personas: [values] };
         const created: any = await ClientService.createClient(payload, token);
         const nuevo = Array.isArray(created) ? created[0] : created;
         onSubmit(nuevo);
-        message.success('Cliente creado y agregado');
+        toast.success('Cliente creado y agregado');
       }
     } catch (error: any) {
-      message.error(error.message || 'Error al guardar el cliente');
+      toast.error(error.message || 'Error al guardar el cliente');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal
-      open={open}
-      title={<ModalTitle icon={<User size={15} />}>{editando ? 'Editar cliente' : 'Agregar cliente'}</ModalTitle>}
-      onCancel={onCancel}
-      footer={null}
-      destroyOnClose
-    >
-      <Form form={form} layout="vertical" onFinish={handleFinish}>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Item name="nombre" label="Nombre" rules={[{ required: true, message: 'Ingresa el nombre' }]} style={{ flex: 1 }}>
-            <Input prefix={<User size={14} color={notion.inkFaint} />} placeholder="Juan" />
-          </Item>
-          <Item name="apellido" label="Apellido" rules={[{ required: true, message: 'Ingresa el apellido' }]} style={{ flex: 1 }}>
-            <Input prefix={<User size={14} color={notion.inkFaint} />} placeholder="Pérez" />
-          </Item>
-        </div>
+    <Modal isOpen={open} onOpenChange={(isOpen) => !isOpen && onCancel()} scrollBehavior="inside">
+      <ModalContent>
+        <ModalHeader>
+          <ModalTitle icon={<User size={15} />}>{editando ? 'Editar cliente' : 'Agregar cliente'}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleSubmit(handleFinish)}>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <FormField
+                control={control}
+                name="nombre"
+                render={(field) => (
+                  <Input {...field} label="Nombre" startContent={<User size={14} color={notion.inkFaint} />} placeholder="Juan" className="flex-1" />
+                )}
+              />
+              <FormField
+                control={control}
+                name="apellido"
+                render={(field) => (
+                  <Input {...field} label="Apellido" startContent={<User size={14} color={notion.inkFaint} />} placeholder="Pérez" className="flex-1" />
+                )}
+              />
+            </div>
 
-        <Item name="tipo_documento" label="Tipo de documento" rules={[{ required: true, message: 'Selecciona el tipo' }]}>
-          <Select placeholder="Selecciona el tipo" suffixIcon={<IdCard size={14} color={notion.inkFaint} />}>
-            <Option value="cedula">Cédula</Option>
-            <Option value="pasaporte">Pasaporte</Option>
-          </Select>
-        </Item>
+            <FormField
+              control={control}
+              name="tipo_documento"
+              render={({ value, onChange, onBlur, isInvalid, errorMessage }) => (
+                <Select
+                  label="Tipo de documento"
+                  placeholder="Selecciona el tipo"
+                  selectedKeys={value ? [value] : []}
+                  onSelectionChange={(keys) => onChange(Array.from(keys as Set<React.Key>)[0] ?? '')}
+                  onBlur={onBlur}
+                  isInvalid={isInvalid}
+                  errorMessage={errorMessage}
+                  startContent={<IdCard size={14} color={notion.inkFaint} />}
+                  className="mt-4"
+                >
+                  <SelectItem key="cedula">Cédula</SelectItem>
+                  <SelectItem key="pasaporte">Pasaporte</SelectItem>
+                </Select>
+              )}
+            />
 
-        {/* El botón va fuera del Item: Form.Item solo clona a su hijo directo,
-            envolverlo junto al botón le rompía el id y la propagación de valor. */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <Item
-            name="numero_documento"
-            label="Nro de documento"
-            rules={[{ required: true, message: 'Ingresa el número de documento' }]}
-            extra={
-              !editando && existingId ? (
-                <Tag color="blue" style={{ marginTop: 6 }}>Cliente existente, se enlazará sin duplicarlo</Tag>
-              ) : undefined
-            }
-            style={{ flex: 1 }}
-          >
-            <Input prefix={<IdCard size={14} color={notion.inkFaint} />} placeholder="1234567890" onChange={() => setExistingId(null)} />
-          </Item>
-          {!editando && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 16 }}>
+              <div style={{ flex: 1 }}>
+                <FormField
+                  control={control}
+                  name="numero_documento"
+                  render={(field) => (
+                    <Input
+                      {...field}
+                      label="Nro de documento"
+                      startContent={<IdCard size={14} color={notion.inkFaint} />}
+                      placeholder="1234567890"
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setExistingId(null);
+                      }}
+                    />
+                  )}
+                />
+                {!editando && existingId && (
+                  <Chip color="primary" variant="flat" size="sm" className="mt-1.5">
+                    Cliente existente, se enlazará sin duplicarlo
+                  </Chip>
+                )}
+              </div>
+              {!editando && (
+                <Button
+                  startContent={<Search size={14} />}
+                  isLoading={validating}
+                  onPress={handleValidar}
+                  className="mt-1"
+                >
+                  Validar
+                </Button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <FormField
+                control={control}
+                name="ciudadania"
+                render={(field) => (
+                  <Input {...field} label="Ciudadanía" startContent={<Globe size={14} color={notion.inkFaint} />} placeholder="Ecuador" className="flex-1" />
+                )}
+              />
+              <FormField
+                control={control}
+                name="procedencia"
+                render={(field) => (
+                  <Input {...field} label="Procedencia" startContent={<Compass size={14} color={notion.inkFaint} />} placeholder="Colombia" className="flex-1" />
+                )}
+              />
+            </div>
+
             <Button
-              icon={<Search size={14} />}
-              loading={validating}
-              onClick={handleValidar}
-              style={{ marginTop: 30, borderRadius: 8 }}
+              type="submit"
+              color="primary"
+              fullWidth
+              isLoading={saving}
+              startContent={editando ? <Save size={16} /> : <UserPlus size={16} />}
+              className="mt-4"
             >
-              Validar
+              {editando ? 'Guardar cambios' : existingId ? 'Agregar cliente' : 'Crear y agregar'}
             </Button>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Item name="ciudadania" label="Ciudadanía" rules={[{ required: true, message: 'Ingresa la ciudadanía' }]} style={{ flex: 1 }}>
-            <Input prefix={<Globe size={14} color={notion.inkFaint} />} placeholder="Ecuador" />
-          </Item>
-          <Item name="procedencia" label="Procedencia" rules={[{ required: true, message: 'Ingresa la procedencia' }]} style={{ flex: 1 }}>
-            <Input prefix={<Compass size={14} color={notion.inkFaint} />} placeholder="Colombia" />
-          </Item>
-        </div>
-
-        <Item style={{ marginBottom: 0, marginTop: 8 }}>
-          <Button
-            type="primary"
-            htmlType="submit"
-            block
-            loading={saving}
-            icon={editando ? <Save size={16} /> : <UserPlus size={16} />}
-            style={{ borderRadius: 8 }}
-          >
-            {editando ? 'Guardar cambios' : existingId ? 'Agregar cliente' : 'Crear y agregar'}
-          </Button>
-        </Item>
-      </Form>
+          </form>
+        </ModalBody>
+      </ModalContent>
     </Modal>
   );
 }

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import VentasService from '@/services/VentasService';
 import CheckOutModal from '@/components/CheckOutModal';
-import { Spin, Alert, message, Empty, Table } from 'antd';
+import { Spin, Alert, Empty, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -32,6 +32,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
 import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
 
@@ -137,20 +138,20 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
   const handleDelete = async (ventaId: number) => {
     try {
       await VentasService.deleteVenta(token, ventaId);
-      message.success('Venta eliminada');
+      toast.success('Venta eliminada');
       setVentas((prev) => prev.filter((v) => v.id !== ventaId));
     } catch {
-      message.error('Error al eliminar la venta');
+      toast.error('Error al eliminar la venta');
     }
   };
 
   const handleCheckIn = async (ventaId: number) => {
     try {
       const updated = await VentasService.checkInVenta(token, ventaId);
-      message.success('Check-in registrado');
+      toast.success('Check-in registrado');
       setVentas((prev) => prev.map((v) => (v.id === ventaId ? { ...v, estado: updated.estado } : v)));
     } catch {
-      message.error('Error al registrar el check-in');
+      toast.error('Error al registrar el check-in');
     }
   };
 

@@ -1,9 +1,10 @@
 "use client"
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react'
-import { Card, Spin, Typography, Button, Result, message } from 'antd'
+import { Card, Spinner, Button } from '@heroui/react';
+import { ResultState } from '@/components/ui/ResultState';
 import ReservasService from '@/services/ReservasService'
-const { Title, Paragraph } = Typography
+import { toast } from '@/lib/toast';
 
 const ConfirmReserva = () => {
   const router = useRouter()
@@ -24,7 +25,7 @@ const ConfirmReserva = () => {
     } catch (error) {
       console.error(error)
       setError(true)
-      message.error('No se pudo confirmar la reserva')
+      toast.error('No se pudo confirmar la reserva')
     } finally {
       setLoading(false)
     }
@@ -33,7 +34,7 @@ const ConfirmReserva = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Spin size="large" />
+        <Spinner size="lg" />
         <p>Cargando la confirmación...</p>
       </div>
     )
@@ -41,12 +42,12 @@ const ConfirmReserva = () => {
 
   if (error) {
     return (
-      <Result
+      <ResultState
         status="error"
         title="No se pudo confirmar la reserva"
         subTitle="Hubo un problema al confirmar tu reserva. Por favor, intenta nuevamente más tarde o contacta con soporte."
         extra={
-          <Button type="primary" onClick={() => router.push('/')}>
+          <Button color="primary" onPress={() => router.push('/')}>
             Volver al Inicio
           </Button>
         }
@@ -56,13 +57,13 @@ const ConfirmReserva = () => {
 
   return (
     <div style={{ maxWidth: '600px', margin: '50px auto' }}>
-      <Card>
-        <Result
+      <Card className="p-6">
+        <ResultState
           status="success"
           title="¡Reserva Confirmada!"
           subTitle={`Tu reserva con ID ${id} ha sido confirmada exitosamente.`}
           extra={
-            <Button type="primary" onClick={() => router.push('/')}>
+            <Button color="primary" onPress={() => router.push('/')}>
               Ir al Inicio
             </Button>
           }

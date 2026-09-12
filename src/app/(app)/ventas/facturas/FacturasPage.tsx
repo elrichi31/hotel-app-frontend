@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import FacturasService from '@/services/FacturasService';
-import { Spin, Alert, message, Empty, Table, Modal } from 'antd';
+import { Spin, Alert, Empty, Table, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -31,6 +31,7 @@ import { RowActionsMenu, RowAction } from '@/components/ui/RowActionsMenu';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { TableToolbar, Period } from '@/components/ui/TableToolbar';
 import { PageSizeSelect } from '@/components/ui/PageSizeSelect';
+import { toast } from '@/lib/toast';
 
 dayjs.extend(isBetween);
 
@@ -133,24 +134,24 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
   const handleEmitir = async (facturaId: number) => {
     try {
       const factura = facturas.find((f) => f.id === facturaId);
-      if (!factura) return message.error('Factura no encontrada');
+      if (!factura) return toast.error('Factura no encontrada');
       const actualizada = await FacturasService.updateFactura(token, facturaId, { ...factura, estado: 'emitido' });
       actualizarLocal(actualizada);
-      message.success('Factura emitida');
+      toast.success('Factura emitida');
     } catch (error: any) {
-      message.error(error?.response?.data?.message ?? 'Error al emitir la factura');
+      toast.error(error?.response?.data?.message ?? 'Error al emitir la factura');
     }
   };
 
   const handleAnular = async (facturaId: number) => {
     try {
       const factura = facturas.find((f) => f.id === facturaId);
-      if (!factura) return message.error('Factura no encontrada');
+      if (!factura) return toast.error('Factura no encontrada');
       const actualizada = await FacturasService.updateFactura(token, facturaId, { ...factura, estado: 'anulado' });
       actualizarLocal(actualizada);
-      message.success('Factura anulada');
+      toast.success('Factura anulada');
     } catch (error: any) {
-      message.error(error?.response?.data?.message ?? 'Error al anular la factura');
+      toast.error(error?.response?.data?.message ?? 'Error al anular la factura');
     }
   };
 
@@ -159,10 +160,10 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
     try {
       const actualizada = await FacturasService.updateFactura(token, selectedFactura.id, updatedFactura);
       actualizarLocal(actualizada);
-      message.success('Factura actualizada');
+      toast.success('Factura actualizada');
       setIsModalOpen(false);
     } catch (error: any) {
-      message.error(error?.response?.data?.message ?? 'Error al actualizar la factura');
+      toast.error(error?.response?.data?.message ?? 'Error al actualizar la factura');
     }
   };
 
