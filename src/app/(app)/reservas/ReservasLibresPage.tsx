@@ -10,6 +10,7 @@ import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { ActiveFilters, ActiveFilter } from '@/components/ui/ActiveFilters';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { useSortedRows } from '@/lib/useSortedRows';
 import { toast } from '@/lib/toast';
@@ -25,7 +26,7 @@ const ESTADO_COLOR: Record<EstadoReservaLibre, string> = {
 };
 
 const ESTADO_LABEL: Record<EstadoReservaLibre, string> = {
-  pendiente_revision: 'Pendiente de revisión',
+  pendiente_revision: 'Pendiente',
   validada: 'Validada',
   descartada: 'Descartada',
 };
@@ -117,6 +118,12 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
     estadia: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
   });
   const pageItems = paginate(sorted, pagination);
+  const filterChips: ActiveFilter[] = [
+    ...(busqueda.trim() ? [{ key: 'search', label: `“${busqueda.trim()}”`, onClear: () => setBusqueda('') }] : []),
+    ...(filtroEstado !== 'todos'
+      ? [{ key: 'estado', label: ESTADO_LABEL[filtroEstado as EstadoReservaLibre] ?? filtroEstado, onClear: () => setFiltroEstado('todos') }]
+      : []),
+  ];
 
   if (loading) return <Spinner />;
   if (error) return <div style={{ color: notion.red }}>{error}</div>;
@@ -285,11 +292,13 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
           disallowEmptySelection
         >
           <SelectItem key="todos">Todos los estados</SelectItem>
-          <SelectItem key="pendiente_revision">Pendiente de revisión</SelectItem>
+          <SelectItem key="pendiente_revision">Pendiente</SelectItem>
           <SelectItem key="validada">Validada</SelectItem>
           <SelectItem key="descartada">Descartada</SelectItem>
         </Select>
       </div>
+
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<ReservaLibre>
         ariaLabel="Reservas libres"

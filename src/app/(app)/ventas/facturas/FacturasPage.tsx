@@ -28,7 +28,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu, RowAction } from '@/components/ui/RowActionsMenu';
 import { StatusDot } from '@/components/ui/StatusDot';
-import { TableToolbar, Period } from '@/components/ui/TableToolbar';
+import { TableToolbar, Period, useToolbarFilterChips } from '@/components/ui/TableToolbar';
+import { ActiveFilters, ActiveFilter } from '@/components/ui/ActiveFilters';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { useSortedRows } from '@/lib/useSortedRows';
@@ -181,6 +182,12 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
     { column: 'fecha_emision', direction: 'descending' }
   );
   const pageItems = paginate(sorted, pagination);
+  const filterChips: ActiveFilter[] = [
+    ...useToolbarFilterChips({ search: busqueda, onSearch: setBusqueda, period: periodo, onPeriodChange: setPeriodo, dateRange, onDateRangeChange: setDateRange }),
+    ...(filtroEstado !== 'todos'
+      ? [{ key: 'estado', label: facturaEstadoLabel[filtroEstado as EstadoFactura] ?? filtroEstado, onClear: () => setFiltroEstado('todos') }]
+      : []),
+  ];
 
   if (loading) return <div className="flex justify-center items-center h-screen"><Spinner size="lg" /></div>;
   if (error) return <div style={{ color: notion.red }}>{error}</div>;
@@ -315,6 +322,8 @@ const FacturasPage: React.FC<FacturasPageProps> = ({ token }) => {
           <SelectItem key="anulado">Anulado</SelectItem>
         </Select>
       </div>
+
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<Factura>
         ariaLabel="Facturas"

@@ -12,7 +12,8 @@ import { dateTime } from '@/lib/format';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
-import { TableToolbar, Period } from '@/components/ui/TableToolbar';
+import { TableToolbar, Period, useToolbarFilterChips } from '@/components/ui/TableToolbar';
+import { ActiveFilters } from '@/components/ui/ActiveFilters';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { useSortedRows } from '@/lib/useSortedRows';
@@ -125,6 +126,14 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
     { column: 'created_at', direction: 'descending' }
   );
   const pageItems = paginate(sorted, pagination);
+  const filterChips = useToolbarFilterChips({
+    search: busqueda,
+    onSearch: setBusqueda,
+    period: periodo,
+    onPeriodChange: setPeriodo,
+    dateRange,
+    onDateRangeChange: setDateRange,
+  });
 
   if (loading) return <Spinner />;
   if (error) return <div style={{ color: notion.red }}>{error}</div>;
@@ -219,6 +228,7 @@ const ClientesPage: React.FC<ClientesPageProps> = ({ token }) => {
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
       />
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<ClienteRow>
         ariaLabel="Clientes"

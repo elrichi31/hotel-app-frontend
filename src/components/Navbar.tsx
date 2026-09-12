@@ -1,5 +1,5 @@
 "use client";
-import React, { ReactNode, useState, useEffect, useMemo } from 'react';
+import React, { ReactNode, useState, useEffect, useMemo, useRef } from 'react';
 import {
   PanelLeft,
   Activity,
@@ -85,6 +85,8 @@ const App = ({ children, user, logout, config }: any) => {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -128,6 +130,40 @@ const App = ({ children, user, logout, config }: any) => {
     router.push(key);
     setDrawerVisible(false);
   };
+
+  /** Todas las entradas de navegación visibles para el rol actual, planas (sin secciones). */
+  const searchableEntries = useMemo(
+    () => NAV_SECTIONS.flatMap((s) => s.entries).filter((e) => !e.adminOnly || isAdmin),
+    [isAdmin]
+  );
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return searchableEntries.filter((e) => e.label.toLowerCase().includes(q));
+  }, [searchableEntries, searchQuery]);
+
+  const goToSearchResult = (key: string) => {
+    router.push(key);
+    setSearchQuery('');
+    searchInputRef.current?.blur();
+  };
+
+  // Atajo global ⌘K / Ctrl+K: enfoca el buscador, como promete el hint del propio input.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const initials = ((user?.first_name?.[0] ?? '') + (user?.last_name?.[0] ?? '')).toUpperCase();
   const iconProps = { size: 17, strokeWidth: 1.75 };
@@ -463,19 +499,56 @@ const App = ({ children, user, logout, config }: any) => {
       </button>
 
       <Input
+        ref={searchInputRef}
+        value={searchQuery}
+        onValueChange={setSearchQuery}
         startContent={<Search size={15} strokeWidth={1.75} color={notion.inkFaint} />}
-        placeholder="Buscar..."
-        endContent={<span style={{ fontSize: 11, color: notion.inkFaint }}>⌘K</span>}
-        onKeyDown={(e) => e.key === 'Enter' && soonMessage('Buscador')()}
-        classNames={{ inputWrapper: 'bg-transparent' }}
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: `1px solid ${notion.divider}`,
-          borderRadius: 8,
-          flex: 1,
-          maxWidth: 360,
+        placeholder="Buscar páginas..."
+        endContent={!searchQuery && <span style={{ fontSize: 11, color: notion.inkFaint }}>⌘K</span>}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && searchResults[0]) goToSearchResult(searchResults[0].key);
+        }}
+        classNames={{
+          base: 'flex-1 max-w-[360px]',
+          inputWrapper:
+            'bg-white/[0.04] border border-white/[0.08] rounded-lg data-[hover=true]:bg-white/[0.06] group-data-[focus=true]:bg-white/[0.06]',
         }}
       />
+
+      {/* Anclado al input vía triggerRef (headless: sin PopoverTrigger, que le
+          impondría semántica de botón al input y rompería el tipeo). */}
+      <Popover
+        isOpen={searchQuery.trim().length > 0}
+        onOpenChange={(open) => !open && setSearchQuery('')}
+        triggerRef={searchInputRef}
+        placement="bottom-start"
+        offset={6}
+      >
+        {[
+          <span key="trigger" style={{ display: 'none' }} />,
+          <PopoverContent key="content" className="w-[320px] p-1.5">
+            {searchResults.length > 0 ? (
+              <div className="flex flex-col w-full">
+                {searchResults.map((entry) => (
+                  <button
+                    key={entry.key}
+                    onClick={() => goToSearchResult(entry.key)}
+                    className="w-full flex items-center gap-2.5 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+                    style={{ padding: '8px 10px', fontSize: 13.5, color: notion.ink, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span style={{ display: 'flex', color: notion.inkFaint, flexShrink: 0 }}>{entry.icon}</span>
+                    {entry.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '10px 10px', fontSize: 13, color: notion.inkFaint }}>
+                Sin resultados para &ldquo;{searchQuery}&rdquo;
+              </div>
+            )}
+          </PopoverContent>,
+        ]}
+      </Popover>
 
       {iconCluster}
     </div>

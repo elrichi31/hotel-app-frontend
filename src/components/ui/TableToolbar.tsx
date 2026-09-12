@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import dayjs, { Dayjs } from 'dayjs';
 import { notion } from '@/lib/theme';
 import { toCalendarDate, fromCalendarDate } from '@/lib/dateField';
+import type { ActiveFilter } from '@/components/ui/ActiveFilters';
 
 export type Period = 'todas' | 'hoy' | 'ayer' | '7dias' | 'mes';
 
@@ -15,6 +16,47 @@ const PERIOD_OPTIONS: { label: string; value: Period }[] = [
   { label: '7 días', value: '7dias' },
   { label: 'Mes', value: 'mes' },
 ];
+
+const PERIOD_LABEL: Record<Period, string> = Object.fromEntries(
+  PERIOD_OPTIONS.map((o) => [o.value, o.label])
+) as Record<Period, string>;
+
+/**
+ * Deriva los chips de "búsqueda / periodo / rango de fechas" a partir del
+ * mismo estado controlado que ya recibe `TableToolbar` — así cada página que
+ * usa el toolbar no repite esta lógica para armar sus chips de filtros activos.
+ */
+export function useToolbarFilterChips({
+  search,
+  onSearch,
+  period,
+  onPeriodChange,
+  dateRange,
+  onDateRangeChange,
+}: {
+  search: string;
+  onSearch: (v: string) => void;
+  period: Period;
+  onPeriodChange: (p: Period) => void;
+  dateRange: [Dayjs, Dayjs] | null;
+  onDateRangeChange: (r: [Dayjs, Dayjs] | null) => void;
+}): ActiveFilter[] {
+  const chips: ActiveFilter[] = [];
+  if (search.trim()) {
+    chips.push({ key: 'search', label: `“${search.trim()}”`, onClear: () => onSearch('') });
+  }
+  if (period !== 'todas') {
+    chips.push({ key: 'period', label: PERIOD_LABEL[period], onClear: () => onPeriodChange('todas') });
+  }
+  if (dateRange) {
+    chips.push({
+      key: 'dateRange',
+      label: `${dateRange[0].format('DD/MM/YYYY')} – ${dateRange[1].format('DD/MM/YYYY')}`,
+      onClear: () => onDateRangeChange(null),
+    });
+  }
+  return chips;
+}
 
 /**
  * Barra de filtros para las tablas de registros: búsqueda + periodo rápido +

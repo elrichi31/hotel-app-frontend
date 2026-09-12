@@ -29,7 +29,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { TableToolbar, Period } from '@/components/ui/TableToolbar';
+import { TableToolbar, Period, useToolbarFilterChips } from '@/components/ui/TableToolbar';
+import { ActiveFilters, ActiveFilter } from '@/components/ui/ActiveFilters';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { useSortedRows } from '@/lib/useSortedRows';
@@ -181,6 +182,12 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
     { column: 'created_at', direction: 'descending' }
   );
   const pageItems = paginate(sorted, pagination);
+  const filterChips: ActiveFilter[] = [
+    ...useToolbarFilterChips({ search: busqueda, onSearch: setBusqueda, period: periodo, onPeriodChange: setPeriodo, dateRange, onDateRangeChange: setDateRange }),
+    ...(filtroEstado !== 'todos'
+      ? [{ key: 'estado', label: ESTADO_LABEL[filtroEstado as EstadoVenta] ?? filtroEstado, onClear: () => setFiltroEstado('todos') }]
+      : []),
+  ];
 
   if (loading) return <Spinner />;
   if (error) return <div style={{ color: notion.red }}>{error}</div>;
@@ -334,6 +341,8 @@ const VentasPage: React.FC<VentasPageProps> = ({ token }) => {
           <SelectItem key="cancelada">Cancelada</SelectItem>
         </Select>
       </div>
+
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<Venta>
         ariaLabel="Ventas"

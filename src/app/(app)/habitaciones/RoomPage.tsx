@@ -25,6 +25,7 @@ import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { ActiveFilters, ActiveFilter } from '@/components/ui/ActiveFilters';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { useSortedRows } from '@/lib/useSortedRows';
 import type { Room, RoomPrecio } from '@/types/types';
@@ -149,6 +150,11 @@ export default function RoomsPage({ token }: RoomsPageProps) {
     { column: 'numero', direction: 'ascending' }
   );
   const pageItems = paginate(sorted, pagination);
+  const filterChips: ActiveFilter[] = [
+    ...(busqueda.trim() ? [{ key: 'search', label: `“${busqueda.trim()}”`, onClear: () => setBusqueda('') }] : []),
+    ...(filtroEstado !== 'Todas' ? [{ key: 'estado', label: filtroEstado, onClear: () => setFiltroEstado('Todas') }] : []),
+    ...(filtroTipo !== 'todos' ? [{ key: 'tipo', label: filtroTipo, onClear: () => setFiltroTipo('todos') }] : []),
+  ];
 
   const columns: DataTableColumn<Room>[] = [
     {
@@ -374,6 +380,8 @@ export default function RoomsPage({ token }: RoomsPageProps) {
           </Select>
         )}
       </div>
+
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<Room>
         ariaLabel="Habitaciones"

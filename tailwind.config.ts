@@ -27,7 +27,22 @@ const config: Config = {
         dark: {
           colors: {
             background: notion.pageBg,
-            foreground: notion.ink,
+            foreground: {
+              // Escala completa a propósito: sin ella HeroUI no puede derivar
+              // foreground-500 (el color que usa para placeholders y texto
+              // secundario) y cae a blanco puro, mismo tono que el texto real.
+              50: "#141414",
+              100: "#1c1c1c",
+              200: notion.track,
+              300: "#3a3a3a",
+              400: notion.inkFaint,
+              500: notion.inkFaint,
+              600: notion.inkMuted,
+              700: notion.inkMuted,
+              800: notion.ink,
+              900: notion.ink,
+              DEFAULT: notion.ink,
+            },
             content1: notion.cardBg,
             content2: notion.sidebarBg,
             content3: "#1c1c1c",

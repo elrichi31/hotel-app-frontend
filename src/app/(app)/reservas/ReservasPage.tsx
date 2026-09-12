@@ -25,7 +25,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { TableToolbar, Period } from '@/components/ui/TableToolbar';
+import { TableToolbar, Period, useToolbarFilterChips } from '@/components/ui/TableToolbar';
+import { ActiveFilters, ActiveFilter } from '@/components/ui/ActiveFilters';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { useSortedRows } from '@/lib/useSortedRows';
@@ -55,6 +56,13 @@ const ESTADO_COLOR: Record<Estado, string> = {
   confirmado: viz.positive,
   aprobada: viz.positive,
   cancelada: viz.negative,
+};
+
+const ESTADO_LABEL: Record<Estado, string> = {
+  pendiente: 'Pendiente',
+  confirmado: 'Confirmado',
+  aprobada: 'Aprobada',
+  cancelada: 'Cancelada',
 };
 
 const enPeriodo = (fecha: string, periodo: Period) => {
@@ -161,6 +169,12 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
     total: (a, b) => a.total - b.total,
   });
   const pageItems = paginate(sorted, pagination);
+  const filterChips: ActiveFilter[] = [
+    ...useToolbarFilterChips({ search: busqueda, onSearch: setBusqueda, period: periodo, onPeriodChange: setPeriodo, dateRange, onDateRangeChange: setDateRange }),
+    ...(filtroEstado !== 'todos'
+      ? [{ key: 'estado', label: ESTADO_LABEL[filtroEstado as Estado] ?? filtroEstado, onClear: () => setFiltroEstado('todos') }]
+      : []),
+  ];
 
   if (loading) return <Spinner />;
   if (error) return <div style={{ color: notion.red }}>{error}</div>;
@@ -290,6 +304,8 @@ const ReservasPage: React.FC<ReservasPageProps> = ({ token }) => {
           <SelectItem key="cancelada">Cancelada</SelectItem>
         </Select>
       </div>
+
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<Reserva>
         ariaLabel="Reservas"

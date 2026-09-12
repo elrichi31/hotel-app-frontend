@@ -21,6 +21,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { ActiveFilters, ActiveFilter } from '@/components/ui/ActiveFilters';
 import { TablePagination, paginate, PaginationState } from '@/components/ui/TablePagination';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useSortedRows } from '@/lib/useSortedRows';
@@ -152,6 +153,12 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
     { usuario: (a, b) => a.first_name.localeCompare(b.first_name) }
   );
   const pageItems = paginate(sorted, pagination);
+  const filterChips: ActiveFilter[] = [
+    ...(busqueda.trim() ? [{ key: 'search', label: `“${busqueda.trim()}”`, onClear: () => setBusqueda('') }] : []),
+    ...(filtroRol !== 'todos' ? [{ key: 'rol', label: filtroRol === 'admin' ? 'Admin' : 'Empleado', onClear: () => setFiltroRol('todos') }] : []),
+    ...(filtroEstado !== 'todos' ? [{ key: 'estado', label: filtroEstado === 'activo' ? 'Activo' : 'Inactivo', onClear: () => setFiltroEstado('todos') }] : []),
+    ...(filtroNotif !== 'todos' ? [{ key: 'notif', label: filtroNotif === 'si' ? 'Recibe avisos' : 'No recibe avisos', onClear: () => setFiltroNotif('todos') }] : []),
+  ];
 
   if (loading) return <Spinner />;
   if (error) return <div style={{ color: notion.red }}>{error}</div>;
@@ -301,6 +308,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ token, role }) => {
           <SelectItem key="no">No recibe</SelectItem>
         </Select>
       </div>
+
+      <ActiveFilters filters={filterChips} />
 
       <DataTable<User>
         ariaLabel="Usuarios"
