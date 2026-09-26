@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import ReservasLibresService, { ReservaLibre, EstadoReservaLibre } from '@/services/ReservasLibresService';
 import { Spinner, Input, Select, SelectItem, Tooltip } from '@heroui/react';
 import dayjs from 'dayjs';
-import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone, Search, Clock, Bell } from 'lucide-react';
+import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone, Search, Clock } from 'lucide-react';
 import { notion, viz } from '@/lib/theme';
 import { money, shortDate } from '@/lib/format';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
@@ -61,11 +61,11 @@ const avatarGradient = (id: number) => {
 const MAX_AVATARES = 4;
 
 const Notificados = ({ usuarios }: { usuarios: ReservaLibre['notificados'] }) => {
-  if (!usuarios?.length) return <span style={{ color: notion.inkFaint }}>—</span>;
+  if (!usuarios?.length) return null;
   const extra = usuarios.length - MAX_AVATARES;
   const circulo: React.CSSProperties = {
-    width: 26,
-    height: 26,
+    width: 20,
+    height: 20,
     borderRadius: '50%',
     border: `2px solid ${notion.cardBg}`,
     flexShrink: 0,
@@ -85,16 +85,16 @@ const Notificados = ({ usuarios }: { usuarios: ReservaLibre['notificados'] }) =>
     >
       <div style={{ display: 'inline-flex', cursor: 'default' }}>
         {usuarios.slice(0, MAX_AVATARES).map((u, i) => (
-          <span key={u.id} aria-label={u.nombre} style={{ ...circulo, background: avatarGradient(u.id), marginLeft: i ? -8 : 0 }} />
+          <span key={u.id} aria-label={u.nombre} style={{ ...circulo, background: avatarGradient(u.id), marginLeft: i ? -6 : 0 }} />
         ))}
         {extra > 0 && (
           <span
             style={{
               ...circulo,
-              marginLeft: -8,
+              marginLeft: -6,
               background: notion.track,
               color: notion.ink,
-              fontSize: 11,
+              fontSize: 9.5,
               fontWeight: 600,
               display: 'inline-flex',
               alignItems: 'center',
@@ -232,7 +232,7 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
     {
       key: 'estadia',
       header: <ColumnHeader icon={<Calendar size={13} />}>Estadía</ColumnHeader>,
-      width: 190,
+      width: 180,
       allowsSorting: true,
       render: (r) => {
         const noches = dayjs(r.fecha_fin).diff(dayjs(r.fecha_inicio), 'day');
@@ -241,24 +241,17 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
             <div style={{ color: notion.inkMuted }}>
               {shortDate(r.fecha_inicio)} → {shortDate(r.fecha_fin)}
             </div>
-            <div style={{ fontSize: 12, color: notion.inkFaint, marginTop: 2 }}>
-              {noches} {noches === 1 ? 'noche' : 'noches'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: notion.inkFaint, marginTop: 2 }}>
+              {noches} {noches === 1 ? 'noche' : 'noches'} · <Users size={11} /> {r.numero_personas}
             </div>
           </div>
         );
       },
     },
     {
-      key: 'numero_personas',
-      header: <ColumnHeader icon={<Users size={13} />}>Huéspedes</ColumnHeader>,
-      align: 'center',
-      width: 100,
-      render: (r) => r.numero_personas,
-    },
-    {
       key: 'total',
       header: <ColumnHeader icon={<Wallet size={13} />}>Total</ColumnHeader>,
-      width: 110,
+      width: 100,
       render: (r) => (
         <span style={{ fontWeight: 500, color: notion.ink, fontVariantNumeric: 'tabular-nums' }}>
           {r.total != null ? money(r.total, 2) : '—'}
@@ -268,49 +261,26 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
     {
       key: 'estado',
       header: <ColumnHeader icon={<Tag size={13} />}>Estado</ColumnHeader>,
-      width: 150,
+      width: 120,
       render: (r) => <StatusPill color={ESTADO_COLOR[r.estado]} label={ESTADO_LABEL[r.estado]} />,
     },
     {
+      // Cuándo llegó y a quién se le avisó por correo, en una sola celda.
       key: 'recibida',
       header: <ColumnHeader icon={<Clock size={13} />}>Recibida</ColumnHeader>,
-      width: 130,
+      width: 140,
       allowsSorting: true,
       render: (r) => {
         const d = dayjs(r.created_at);
         return (
           <div style={{ whiteSpace: 'nowrap' }} title={d.format('DD/MM/YYYY HH:mm:ss')}>
-            <div style={{ color: notion.inkMuted }}>{d.format('DD/MM/YYYY')}</div>
-            <div style={{ fontSize: 12, color: notion.inkFaint, marginTop: 2 }}>{d.format('HH:mm')}</div>
+            <div style={{ color: notion.inkMuted }}>
+              {d.format('DD/MM/YYYY')} <span style={{ fontSize: 12, color: notion.inkFaint }}>{d.format('HH:mm')}</span>
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <Notificados usuarios={r.notificados} />
+            </div>
           </div>
-        );
-      },
-    },
-    {
-      key: 'notificados',
-      header: <ColumnHeader icon={<Bell size={13} />}>Notificados</ColumnHeader>,
-      width: 130,
-      render: (r) => <Notificados usuarios={r.notificados} />,
-    },
-    {
-      key: 'whatsapp',
-      header: <ColumnHeader icon={<WhatsAppIcon size={13} />}>WhatsApp</ColumnHeader>,
-      align: 'center',
-      width: 90,
-      render: (r) => {
-        const link = whatsappLink(r);
-        if (!link) return <span style={{ color: notion.inkFaint }}>—</span>;
-        return (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Contactar por WhatsApp"
-            aria-label="Contactar por WhatsApp"
-            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-foreground/70 hover:text-foreground hover:bg-white/10 transition-colors"
-          >
-            <WhatsAppIcon size={17} />
-          </a>
         );
       },
     },
@@ -318,44 +288,61 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
       key: 'acciones',
       header: '',
       align: 'end',
-      width: 60,
-      render: (reserva) => (
-        <RowActionsMenu
-          actions={[
-            ...(reserva.estado === 'pendiente_revision'
-              ? [
-                  {
-                    key: 'validar',
-                    label: 'Validar',
-                    icon: <Check size={14} />,
-                    onClick: () => handleValidar(reserva.id),
-                    confirm: {
-                      title: '¿Validar esta reserva libre?',
-                      description: 'Solo marca que ya la revisaste; no ocupa ninguna habitación ni genera una venta.',
-                      okText: 'Validar',
-                    },
-                  },
-                  {
-                    key: 'descartar',
-                    label: 'Descartar',
-                    icon: <X size={14} />,
-                    danger: true,
-                    onClick: () => handleDescartar(reserva.id),
-                    confirm: { title: '¿Descartar esta reserva libre?', okText: 'Descartar' },
-                  },
-                ]
-              : []),
-            {
-              key: 'eliminar',
-              label: 'Eliminar',
-              icon: <Trash2 size={14} />,
-              danger: true,
-              onClick: () => handleDelete(reserva.id),
-              confirm: { title: '¿Eliminar esta reserva libre?', okText: 'Sí' },
-            },
-          ]}
-        />
-      ),
+      width: 80,
+      render: (reserva) => {
+        const link = whatsappLink(reserva);
+        return (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            {link && (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Contactar por WhatsApp"
+                aria-label="Contactar por WhatsApp"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-foreground/70 hover:text-foreground hover:bg-white/10 transition-colors"
+              >
+                <WhatsAppIcon size={17} />
+              </a>
+            )}
+            <RowActionsMenu
+              actions={[
+                ...(reserva.estado === 'pendiente_revision'
+                  ? [
+                      {
+                        key: 'validar',
+                        label: 'Validar',
+                        icon: <Check size={14} />,
+                        onClick: () => handleValidar(reserva.id),
+                        confirm: {
+                          title: '¿Validar esta reserva libre?',
+                          description: 'Solo marca que ya la revisaste; no ocupa ninguna habitación ni genera una venta.',
+                          okText: 'Validar',
+                        },
+                      },
+                      {
+                        key: 'descartar',
+                        label: 'Descartar',
+                        icon: <X size={14} />,
+                        danger: true,
+                        onClick: () => handleDescartar(reserva.id),
+                        confirm: { title: '¿Descartar esta reserva libre?', okText: 'Descartar' },
+                      },
+                    ]
+                  : []),
+                {
+                  key: 'eliminar',
+                  label: 'Eliminar',
+                  icon: <Trash2 size={14} />,
+                  danger: true,
+                  onClick: () => handleDelete(reserva.id),
+                  confirm: { title: '¿Eliminar esta reserva libre?', okText: 'Sí' },
+                },
+              ]}
+            />
+          </div>
+        );
+      },
     },
   ];
 
