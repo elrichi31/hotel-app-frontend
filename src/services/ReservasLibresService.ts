@@ -17,6 +17,7 @@ export interface ReservaLibre {
     total: number | null;
     notas: string | null;
     estado: EstadoReservaLibre;
+    notificados: { id: number; nombre: string; email: string }[] | null;
     created_at: string;
 }
 

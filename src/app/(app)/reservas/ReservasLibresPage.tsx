@@ -1,9 +1,9 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react';
 import ReservasLibresService, { ReservaLibre, EstadoReservaLibre } from '@/services/ReservasLibresService';
-import { Spinner, Input, Select, SelectItem } from '@heroui/react';
+import { Spinner, Input, Select, SelectItem, Tooltip } from '@heroui/react';
 import dayjs from 'dayjs';
-import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone, Search } from 'lucide-react';
+import { Trash2, User, Calendar, Users, Wallet, Tag, BedDouble, Check, X, Mail, Phone, Search, Clock, Bell } from 'lucide-react';
 import { notion, viz } from '@/lib/theme';
 import { money, shortDate } from '@/lib/format';
 import { ColumnHeader } from '@/components/ui/ColumnHeader';
@@ -31,9 +31,10 @@ const ESTADO_LABEL: Record<EstadoReservaLibre, string> = {
   descartada: 'Descartada',
 };
 
-// Ícono de WhatsApp (no hay uno de marca en lucide-react, se usa un SVG inline)
+// Ícono de WhatsApp (no hay uno de marca en lucide-react, se usa un SVG inline).
+// Monocromo (`currentColor`) para ir con el resto de íconos del panel.
 const WhatsAppIcon = ({ size = 15 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="#25D366">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
     <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.2h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.86 9.86 0 0 0 12.04 2Zm5.8 14.15c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.12.11-1.81-.11-.42-.13-.95-.31-1.64-.6-2.88-1.24-4.76-4.14-4.9-4.33-.14-.19-1.17-1.55-1.17-2.97 0-1.4.74-2.09 1-2.38.26-.28.57-.35.76-.35.19 0 .38 0 .55.01.17.01.41-.07.64.48.24.57.81 1.98.88 2.12.07.14.11.3.02.49-.09.19-.14.3-.28.46-.14.16-.29.36-.42.48-.14.14-.28.28-.12.55.16.28.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.21 1.37.28.14.44.12.6-.07.16-.19.68-.79.87-1.06.19-.28.37-.23.62-.14.26.09 1.63.77 1.91.91.28.14.47.21.54.33.07.12.07.68-.17 1.36Z" />
   </svg>
 );
@@ -50,6 +51,63 @@ function whatsappLink(reserva: ReservaLibre): string | null {
   const mensaje = `Hola ${cliente}, te contactamos del hotel por tu reserva de "${reserva.habitacion_descripcion}" (${reserva.origen}) del ${shortDate(reserva.fecha_inicio)} al ${shortDate(reserva.fecha_fin)}.`
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`
 }
+
+// Degradado estable por usuario: el mismo id siempre da el mismo color.
+const avatarGradient = (id: number) => {
+  const h = (id * 67) % 360;
+  return `linear-gradient(135deg, hsl(${h} 85% 78%), hsl(${(h + 50) % 360} 75% 55%))`;
+};
+
+const MAX_AVATARES = 4;
+
+const Notificados = ({ usuarios }: { usuarios: ReservaLibre['notificados'] }) => {
+  if (!usuarios?.length) return <span style={{ color: notion.inkFaint }}>—</span>;
+  const extra = usuarios.length - MAX_AVATARES;
+  const circulo: React.CSSProperties = {
+    width: 26,
+    height: 26,
+    borderRadius: '50%',
+    border: `2px solid ${notion.cardBg}`,
+    flexShrink: 0,
+  };
+  return (
+    <Tooltip
+      content={
+        <div style={{ padding: '2px 0' }}>
+          <div style={{ fontSize: 11, color: notion.inkFaint, marginBottom: 4 }}>Aviso enviado por correo a</div>
+          {usuarios.map((u) => (
+            <div key={u.id} style={{ fontSize: 12.5 }}>
+              {u.nombre} <span style={{ color: notion.inkFaint }}>· {u.email}</span>
+            </div>
+          ))}
+        </div>
+      }
+    >
+      <div style={{ display: 'inline-flex', cursor: 'default' }}>
+        {usuarios.slice(0, MAX_AVATARES).map((u, i) => (
+          <span key={u.id} aria-label={u.nombre} style={{ ...circulo, background: avatarGradient(u.id), marginLeft: i ? -8 : 0 }} />
+        ))}
+        {extra > 0 && (
+          <span
+            style={{
+              ...circulo,
+              marginLeft: -8,
+              background: notion.track,
+              color: notion.ink,
+              fontSize: 11,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            +{extra}
+          </span>
+        )}
+      </div>
+    </Tooltip>
+  );
+};
 
 const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
   const [reservas, setReservas] = useState<ReservaLibre[]>([]);
@@ -116,6 +174,7 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
 
   const { sorted, sortDescriptor, setSortDescriptor } = useSortedRows<ReservaLibre>(visibles, {
     estadia: (a, b) => dayjs(a.fecha_inicio).diff(dayjs(b.fecha_inicio)),
+    recibida: (a, b) => dayjs(a.created_at).diff(dayjs(b.created_at)),
   });
   const pageItems = paginate(sorted, pagination);
   const filterChips: ActiveFilter[] = [
@@ -213,6 +272,27 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
       render: (r) => <StatusPill color={ESTADO_COLOR[r.estado]} label={ESTADO_LABEL[r.estado]} />,
     },
     {
+      key: 'recibida',
+      header: <ColumnHeader icon={<Clock size={13} />}>Recibida</ColumnHeader>,
+      width: 130,
+      allowsSorting: true,
+      render: (r) => {
+        const d = dayjs(r.created_at);
+        return (
+          <div style={{ whiteSpace: 'nowrap' }} title={d.format('DD/MM/YYYY HH:mm:ss')}>
+            <div style={{ color: notion.inkMuted }}>{d.format('DD/MM/YYYY')}</div>
+            <div style={{ fontSize: 12, color: notion.inkFaint, marginTop: 2 }}>{d.format('HH:mm')}</div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'notificados',
+      header: <ColumnHeader icon={<Bell size={13} />}>Notificados</ColumnHeader>,
+      width: 130,
+      render: (r) => <Notificados usuarios={r.notificados} />,
+    },
+    {
       key: 'whatsapp',
       header: <ColumnHeader icon={<WhatsAppIcon size={13} />}>WhatsApp</ColumnHeader>,
       align: 'center',
@@ -221,8 +301,15 @@ const ReservasLibresPage: React.FC<ReservasLibresPageProps> = ({ token }) => {
         const link = whatsappLink(r);
         if (!link) return <span style={{ color: notion.inkFaint }}>—</span>;
         return (
-          <a href={link} target="_blank" rel="noopener noreferrer" title="Contactar por WhatsApp" style={{ display: 'inline-flex' }}>
-            <WhatsAppIcon size={18} />
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Contactar por WhatsApp"
+            aria-label="Contactar por WhatsApp"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-foreground/70 hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <WhatsAppIcon size={17} />
           </a>
         );
       },
