@@ -53,7 +53,7 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
         </DropdownMenu>
       </Dropdown>
 
-      <Popover isOpen={!!confirming} onOpenChange={(open) => !open && setConfirming(null)} triggerRef={triggerRef} placement="left">
+      <Popover isOpen={!!confirming} onOpenChange={(open) => !open && setConfirming(null)} triggerRef={triggerRef as React.RefObject<HTMLElement>} placement="left">
         {[
           <span key="trigger" style={{ display: 'none' }} />,
           <PopoverContent key="content">

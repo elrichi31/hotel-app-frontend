@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   description: 'Facturas de venta',
 }
 
-export default async function Page({ params }: any) {
+export default async function Page(props: any) {
+  const params = await props.params;
   const session = await getServerSession(authOptions);
   const token = session?.user?.token?.token || '';
   return (

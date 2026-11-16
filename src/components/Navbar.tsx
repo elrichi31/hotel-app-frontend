@@ -520,7 +520,7 @@ const App = ({ children, user, logout, config }: any) => {
       <Popover
         isOpen={searchQuery.trim().length > 0}
         onOpenChange={(open) => !open && setSearchQuery('')}
-        triggerRef={searchInputRef}
+        triggerRef={searchInputRef as React.RefObject<HTMLElement>}
         placement="bottom-start"
         offset={6}
       >
